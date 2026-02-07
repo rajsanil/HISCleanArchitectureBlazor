@@ -1,0 +1,51 @@
+﻿@page "/"
+
+<PageTitle>Home - HIS</PageTitle>
+
+<h1>Hospital Information System</h1>
+
+<p class="lead">Welcome to the Hospital Information System built with Clean Architecture and Blazor.</p>
+
+<div class="row mt-4">
+    <div class="col-md-6 mb-3">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">
+                    <span class="bi bi-people-fill text-primary"></span> Patient Management
+                </h5>
+                <p class="card-text">
+                    Manage patient records, including personal information, medical record numbers, and contact details.
+                </p>
+                <a href="/patients" class="btn btn-primary">Go to Patients</a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6 mb-3">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">
+                    <span class="bi bi-calendar-check-fill text-success"></span> Appointment Scheduling
+                </h5>
+                <p class="card-text">
+                    Schedule and manage patient appointments with doctors, track appointment status, and view upcoming schedules.
+                </p>
+                <a href="/appointments" class="btn btn-success">Go to Appointments</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-12">
+        <h3>Architecture Overview</h3>
+        <p>This application is built using Clean Architecture principles with the following layers:</p>
+        <ul>
+            <li><strong>Domain Layer:</strong> Contains core business entities and interfaces</li>
+            <li><strong>Application Layer:</strong> Implements business logic and use cases</li>
+            <li><strong>Infrastructure Layer:</strong> Handles data persistence and external services</li>
+            <li><strong>Presentation Layer (Blazor):</strong> Provides the user interface</li>
+        </ul>
+    </div>
+</div>
+

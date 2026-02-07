@@ -1,0 +1,220 @@
+@page "/patients"
+@using HIS.Application.Interfaces
+@using HIS.Application.DTOs
+@inject IPatientService PatientService
+@rendermode InteractiveServer
+
+<PageTitle>Patients</PageTitle>
+
+<h1>Patient Management</h1>
+
+<div class="mb-3">
+    <button class="btn btn-primary" @onclick="ShowCreateForm">
+        <i class="bi bi-plus-circle"></i> Add New Patient
+    </button>
+</div>
+
+@if (showCreateForm)
+{
+    <div class="card mb-3">
+        <div class="card-header">
+            <h5>@(isEditing ? "Edit Patient" : "Create New Patient")</h5>
+        </div>
+        <div class="card-body">
+            <EditForm Model="@patientDto" OnValidSubmit="HandleSubmit">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">First Name</label>
+                            <InputText class="form-control" @bind-Value="patientDto.FirstName" />
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Last Name</label>
+                            <InputText class="form-control" @bind-Value="patientDto.LastName" />
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Date of Birth</label>
+                            <InputDate class="form-control" @bind-Value="patientDto.DateOfBirth" />
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Gender</label>
+                            <InputSelect class="form-control" @bind-Value="patientDto.Gender">
+                                <option value="">Select Gender</option>
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                                <option value="Other">Other</option>
+                            </InputSelect>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Email</label>
+                            <InputText class="form-control" type="email" @bind-Value="patientDto.Email" />
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Phone Number</label>
+                            <InputText class="form-control" @bind-Value="patientDto.PhoneNumber" />
+                        </div>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Address</label>
+                    <InputTextArea class="form-control" @bind-Value="patientDto.Address" rows="3" />
+                </div>
+                <div>
+                    <button type="submit" class="btn btn-success">@(isEditing ? "Update" : "Create")</button>
+                    <button type="button" class="btn btn-secondary" @onclick="CancelForm">Cancel</button>
+                </div>
+            </EditForm>
+        </div>
+    </div>
+}
+
+@if (loading)
+{
+    <p><em>Loading patients...</em></p>
+}
+else if (patients.Any())
+{
+    <div class="table-responsive">
+        <table class="table table-striped table-hover">
+            <thead>
+                <tr>
+                    <th>MRN</th>
+                    <th>Name</th>
+                    <th>Date of Birth</th>
+                    <th>Gender</th>
+                    <th>Email</th>
+                    <th>Phone</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var patient in patients)
+                {
+                    <tr>
+                        <td>@patient.MedicalRecordNumber</td>
+                        <td>@patient.FirstName @patient.LastName</td>
+                        <td>@patient.DateOfBirth.ToShortDateString()</td>
+                        <td>@patient.Gender</td>
+                        <td>@patient.Email</td>
+                        <td>@patient.PhoneNumber</td>
+                        <td>
+                            <button class="btn btn-sm btn-warning" @onclick="() => EditPatient(patient)">Edit</button>
+                            <button class="btn btn-sm btn-danger" @onclick="() => DeletePatient(patient.Id)">Delete</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+else
+{
+    <p><em>No patients found.</em></p>
+}
+
+@code {
+    private List<PatientDto> patients = new();
+    private CreatePatientDto patientDto = new();
+    private bool loading = true;
+    private bool showCreateForm = false;
+    private bool isEditing = false;
+    private Guid? editingPatientId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadPatients();
+    }
+
+    private async Task LoadPatients()
+    {
+        loading = true;
+        var result = await PatientService.GetAllPatientsAsync();
+        patients = result.ToList();
+        loading = false;
+    }
+
+    private void ShowCreateForm()
+    {
+        patientDto = new CreatePatientDto();
+        isEditing = false;
+        editingPatientId = null;
+        showCreateForm = true;
+    }
+
+    private async Task EditPatient(PatientDto patient)
+    {
+        patientDto = new CreatePatientDto
+        {
+            FirstName = patient.FirstName,
+            LastName = patient.LastName,
+            DateOfBirth = patient.DateOfBirth,
+            Gender = patient.Gender,
+            Email = patient.Email,
+            PhoneNumber = patient.PhoneNumber,
+            Address = patient.Address
+        };
+        isEditing = true;
+        editingPatientId = patient.Id;
+        showCreateForm = true;
+    }
+
+    private async Task HandleSubmit()
+    {
+        try
+        {
+            if (isEditing && editingPatientId.HasValue)
+            {
+                await PatientService.UpdatePatientAsync(editingPatientId.Value, patientDto);
+            }
+            else
+            {
+                await PatientService.CreatePatientAsync(patientDto);
+            }
+
+            await LoadPatients();
+            CancelForm();
+        }
+        catch (Exception ex)
+        {
+            // Handle error - in production, use proper error handling
+            Console.WriteLine($"Error: {ex.Message}");
+        }
+    }
+
+    private void CancelForm()
+    {
+        showCreateForm = false;
+        patientDto = new CreatePatientDto();
+        isEditing = false;
+        editingPatientId = null;
+    }
+
+    private async Task DeletePatient(Guid id)
+    {
+        if (confirm("Are you sure you want to delete this patient?"))
+        {
+            await PatientService.DeletePatientAsync(id);
+            await LoadPatients();
+        }
+    }
+
+    private bool confirm(string message)
+    {
+        // This is a simple confirmation - in production, use a proper modal
+        return true;
+    }
+}
