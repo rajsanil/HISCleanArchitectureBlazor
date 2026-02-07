@@ -1,0 +1,180 @@
+/* Telerik Grid styling to match MudBlazor theme */
+.telerik-grid-container {
+    --kendo-font-family: 'Roboto', sans-serif;
+    --kendo-border-radius: 4px;
+}
+
+/* Light theme (default) */
+.k-grid {
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    border-radius: 4px;
+    font-family: 'Roboto', sans-serif;
+    background-color: #fff;
+    color: rgba(0, 0, 0, 0.87);
+}
+
+.k-grid-header {
+    background-color: #f5f5f5;
+    font-weight: 500;
+    border-bottom: 2px solid rgba(0, 0, 0, 0.12);
+}
+
+.k-grid-header .k-header {
+    color: rgba(0, 0, 0, 0.87);
+    padding: 12px 8px;
+}
+
+.k-grid tbody tr:hover {
+    background-color: rgba(0, 0, 0, 0.04);
+    cursor: pointer;
+}
+
+.k-grid tbody tr.k-selected {
+    background-color: #594ae2;
+    color: #fff;
+}
+
+.k-grid tbody td {
+    color: rgba(0, 0, 0, 0.87);
+    border-color: rgba(0, 0, 0, 0.12);
+}
+
+.k-button {
+    border-radius: 4px;
+    text-transform: uppercase;
+    font-weight: 500;
+}
+
+.k-button-primary {
+    background-color: #594ae2;
+    border-color: #594ae2;
+}
+
+.k-grid .k-command-cell .k-button {
+    min-width: auto;
+    padding: 4px 12px;
+}
+
+.k-filter-row {
+    background-color: #fff;
+}
+
+.k-filter-row .k-filtercell {
+    border-color: rgba(0, 0, 0, 0.12);
+}
+
+.k-pager {
+    background-color: #f5f5f5;
+    border-top: 1px solid rgba(0, 0, 0, 0.12);
+    color: rgba(0, 0, 0, 0.87);
+}
+
+/* Dark theme */
+.telerik-dark-theme .k-grid {
+    background-color: #1e1e1e !important;
+    color: rgba(255, 255, 255, 0.87) !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+.telerik-dark-theme .k-grid-header {
+    background-color: #2d2d30 !important;
+    border-bottom-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+.telerik-dark-theme .k-grid-header .k-header,
+.telerik-dark-theme .k-grid-header .k-cell-inner,
+.telerik-dark-theme .k-grid-header .k-link,
+.telerik-dark-theme .k-grid-header .k-column-title,
+.telerik-dark-theme .k-grid-header th,
+.telerik-dark-theme .k-grid-header span,
+.telerik-dark-theme .k-grid-header .k-filtercell .k-filtercell-wrapper {
+    color: rgba(255, 255, 255, 0.87) !important;
+}
+
+.telerik-dark-theme .k-grid tbody tr:hover {
+    background-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.telerik-dark-theme .k-grid tbody td {
+    color: rgba(255, 255, 255, 0.87) !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+    background-color: #1e1e1e !important;
+}
+
+.telerik-dark-theme .k-grid tbody tr.k-alt {
+    background-color: #252526 !important;
+}
+
+.telerik-dark-theme .k-grid tbody tr.k-alt td {
+    background-color: #252526 !important;
+}
+
+.telerik-dark-theme .k-filter-row {
+    background-color: #2d2d30 !important;
+}
+
+.telerik-dark-theme .k-filter-row .k-filtercell {
+    border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+.telerik-dark-theme .k-input,
+.telerik-dark-theme .k-textbox {
+    background-color: #3c3c3c !important;
+    color: rgba(255, 255, 255, 0.87) !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+.telerik-dark-theme .k-dropdown,
+.telerik-dark-theme .k-picker {
+    background-color: #3c3c3c !important;
+    color: rgba(255, 255, 255, 0.87) !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+.telerik-dark-theme .k-pager {
+    background-color: #2d2d30 !important;
+    border-top-color: rgba(255, 255, 255, 0.12) !important;
+    color: rgba(255, 255, 255, 0.87) !important;
+}
+
+.telerik-dark-theme .k-pager .k-link {
+    color: rgba(255, 255, 255, 0.87) !important;
+}
+
+.telerik-dark-theme .k-pager .k-state-selected {
+    background-color: #594ae2 !important;
+    color: #fff !important;
+}
+
+/* Filter menu in dark mode */
+.telerik-dark-theme .k-filter-menu {
+    background-color: #2d2d30 !important;
+    color: rgba(255, 255, 255, 0.87) !important;
+}
+
+.telerik-dark-theme .k-filter-menu .k-button {
+    background-color: #3c3c3c !important;
+    color: rgba(255, 255, 255, 0.87) !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+/* Additional Telerik components dark theme support */
+.telerik-dark-theme .k-window {
+    background-color: #2d2d30 !important;
+    color: rgba(255, 255, 255, 0.87) !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+.telerik-dark-theme .k-window-titlebar {
+    background-color: #1e1e1e !important;
+    border-bottom-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+.telerik-dark-theme .k-dialog {
+    background-color: #2d2d30 !important;
+    color: rgba(255, 255, 255, 0.87) !important;
+}
+
+.telerik-dark-theme .k-form-field > label {
+    color: rgba(255, 255, 255, 0.7) !important;
+}

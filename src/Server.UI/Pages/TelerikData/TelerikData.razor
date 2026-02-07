@@ -1,0 +1,152 @@
+@page "/pages/telerikdata"
+
+@using CleanArchitecture.Blazor.Server.UI.Models
+@inject IStringLocalizer<TelerikData> L
+
+@attribute [Authorize]
+<PageTitle>@Title</PageTitle>
+
+<MudPaper Elevation="0" Class="pa-4">
+    <MudStack Row Spacing="0" Class="mb-4" Justify="Justify.SpaceBetween">
+        <MudStack Row AlignItems="AlignItems.Start">
+            <MudIcon Icon="@Icons.Material.Filled.Grid3x3" Size="Size.Large" Color="Color.Primary" />
+            <MudStack Spacing="0">
+                <MudText Typo="Typo.h5" Class="mb-0">@Title</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">Telerik Grid with MudBlazor Theme Integration</MudText>
+            </MudStack>
+        </MudStack>
+        <MudStack Spacing="0" AlignItems="AlignItems.End">
+            <MudToolBar Dense WrapContent="true" Class="py-1 px-0">
+                <MudButton Disabled="@_loading"
+                           OnClick="@OnRefresh"
+                           StartIcon="@Icons.Material.Outlined.Refresh"
+                           Color="Color.Primary"
+                           Variant="Variant.Filled">
+                    @ConstantString.Refresh
+                </MudButton>
+                <MudButton OnClick="@OnAddNew"
+                           StartIcon="@Icons.Material.Outlined.Add"
+                           Color="Color.Primary"
+                           Variant="Variant.Filled">
+                    @ConstantString.New
+                </MudButton>
+                <MudButton OnClick="@OnExport"
+                           StartIcon="@Icons.Material.Outlined.Download"
+                           Color="Color.Success"
+                           Variant="Variant.Filled"
+                           Disabled="@_loading">
+                    Export
+                </MudButton>
+            </MudToolBar>
+        </MudStack>
+    </MudStack>
+
+    <div class="telerik-grid-container">
+        <TelerikGrid Data="@GridData"
+                     Pageable="true"
+                     PageSize="@PageSize"
+                     Sortable="true"
+                     FilterMode="GridFilterMode.FilterRow"
+                     Resizable="true"
+                     Reorderable="true"
+                     SelectionMode="GridSelectionMode.Multiple"
+                     @bind-SelectedItems="@SelectedItems"
+                     Height="calc(100vh - 380px)">
+            <GridColumns>
+                <GridColumn Field="@nameof(TelerikDataModel.Id)" 
+                            Title="ID" 
+                            Width="80px" 
+                            Editable="false" 
+                            TextAlign="@ColumnTextAlign.Center"/>
+                <GridColumn Field="@nameof(TelerikDataModel.Name)" 
+                            Title="Name" 
+                            Width="200px"/>
+                <GridColumn Field="@nameof(TelerikDataModel.Category)" 
+                            Title="Category" 
+                            Width="150px"/>
+                <GridColumn Field="@nameof(TelerikDataModel.Price)" 
+                            Title="Price" 
+                            Width="120px"
+                            DisplayFormat="{0:C2}"/>
+                <GridColumn Field="@nameof(TelerikDataModel.Quantity)" 
+                            Title="Quantity" 
+                            Width="120px"
+                            TextAlign="@ColumnTextAlign.Center"/>
+                <GridColumn Field="@nameof(TelerikDataModel.CreatedDate)" 
+                            Title="Created Date" 
+                            Width="150px"
+                            DisplayFormat="{0:dd/MM/yyyy}"/>
+                <GridColumn Field="@nameof(TelerikDataModel.IsActive)" 
+                            Title="Active" 
+                            Width="100px"
+                            TextAlign="@ColumnTextAlign.Center"/>
+                <GridColumn Field="@nameof(TelerikDataModel.Description)" 
+                            Title="Description" 
+                            Width="250px"/>
+            </GridColumns>
+        </TelerikGrid>
+    </div>
+</MudPaper>
+
+@code {
+    private string Title = "Telerik Data Grid";
+    private List<TelerikDataModel> GridData { get; set; } = new();
+    private IEnumerable<TelerikDataModel> SelectedItems { get; set; } = new List<TelerikDataModel>();
+    private bool _loading = false;
+    private int PageSize = 15;
+
+    protected override void OnInitialized()
+    {
+        LoadSampleData();
+    }
+
+    private void LoadSampleData()
+    {
+        var categories = new[] { "Electronics", "Clothing", "Food", "Books", "Toys" };
+        var random = new Random();
+
+        GridData = Enumerable.Range(1, 50).Select(i => new TelerikDataModel
+        {
+            Id = i,
+            Name = $"Product {i}",
+            Category = categories[random.Next(categories.Length)],
+            Price = Math.Round((decimal)(random.NextDouble() * 1000), 2),
+            Quantity = random.Next(1, 100),
+            CreatedDate = DateTime.Now.AddDays(-random.Next(0, 365)),
+            IsActive = random.Next(0, 2) == 1,
+            Description = $"This is a detailed description for Product {i}. It contains various information about the product."
+        }).ToList();
+    }
+
+    private void OnRefresh()
+    {
+        _loading = true;
+        LoadSampleData();
+        _loading = false;
+        StateHasChanged();
+    }
+
+    private void OnAddNew()
+    {
+        var random = new Random();
+        var categories = new[] { "Electronics", "Clothing", "Food", "Books", "Toys" };
+        var newItem = new TelerikDataModel
+        {
+            Id = GridData.Any() ? GridData.Max(x => x.Id) + 1 : 1,
+            Name = $"New Product {GridData.Count + 1}",
+            Category = categories[random.Next(categories.Length)],
+            Price = 0,
+            Quantity = 0,
+            CreatedDate = DateTime.Now,
+            IsActive = true,
+            Description = "New product description"
+        };
+        GridData.Insert(0, newItem);
+        StateHasChanged();
+    }
+
+    private void OnExport()
+    {
+        // Export logic - could use Telerik's built-in Excel export or custom implementation
+    }
+}

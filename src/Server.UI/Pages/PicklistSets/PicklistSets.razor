@@ -162,7 +162,7 @@
         _canExport = (await AuthService.AuthorizeAsync(state.User, Permissions.PicklistSets.Export)).Succeeded;
     }
 
-    private async Task<GridData<PicklistSetDto>> ServerReload(GridState<PicklistSetDto> state)
+    private async Task<GridData<PicklistSetDto>> ServerReload(MudBlazor.GridState<PicklistSetDto> state)
     {
         try
         {

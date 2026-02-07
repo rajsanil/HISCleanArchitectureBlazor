@@ -3,22 +3,26 @@
 @using CleanArchitecture.Blazor.Server.UI.Themes
 @implements IDisposable
 @inject LayoutService LayoutService
+@inject IJSRuntime JS
 <PageTitle>@ApplicationSettings.AppName</PageTitle>
-<MudRTLProvider RightToLeft="@LayoutService.IsRTL">
-    <MudThemeProvider />
-    <MudPopoverProvider />
-    <MudDialogProvider />
-    <MudSnackbarProvider />
-    <MudThemeProvider @ref="@_mudThemeProvider" Theme="@LayoutService.CurrentTheme" IsDarkMode="@LayoutService.IsDarkMode" IsDarkModeChanged="@LayoutService.SetDarkMode" />
+<TelerikRootComponent>
+    <MudRTLProvider RightToLeft="@LayoutService.IsRTL">
+        <MudThemeProvider />
+        <MudPopoverProvider />
+        <MudDialogProvider />
+        <MudSnackbarProvider />
+        <MudThemeProvider @ref="@_mudThemeProvider" Theme="@LayoutService.CurrentTheme" IsDarkMode="@LayoutService.IsDarkMode" IsDarkModeChanged="@LayoutService.SetDarkMode" />
 
-        @Body
+            @Body
 
-</MudRTLProvider>
+    </MudRTLProvider>
+</TelerikRootComponent>
 
 @code
 {
     private MudThemeProvider _mudThemeProvider = null!;
     private bool _defaultDarkMode;
+    
     public void Dispose()
     {
         LayoutService.MajorUpdateOccured -= LayoutServiceOnMajorUpdateOccured;
@@ -31,6 +35,7 @@
         if (firstRender)
         {
             await ApplyUserPreferences();
+            await UpdateTelerikTheme();
             StateHasChanged();
         }
     }
@@ -48,9 +53,23 @@
         return base.OnInitializedAsync();
     }
 
-    private void LayoutServiceOnMajorUpdateOccured(object? sender, EventArgs e)
+    private async void LayoutServiceOnMajorUpdateOccured(object? sender, EventArgs e)
     {
-        InvokeAsync(() => StateHasChanged());
+        await InvokeAsync(async () =>
+        {
+            await UpdateTelerikTheme();
+            StateHasChanged();
+        });
+    }
+
+    private async Task UpdateTelerikTheme()
+    {
+        var isDark = LayoutService.IsDarkMode;
+        var themePath = isDark 
+            ? "css/dark/dist/css/dark.css"
+            : "_content/Telerik.UI.for.Blazor/css/kendo-theme-default/all.css";
+        
+        await JS.InvokeVoidAsync("changeTelerikTheme", themePath);
     }
 
 }

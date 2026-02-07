@@ -189,7 +189,7 @@
         _canImport = (await AuthService.AuthorizeAsync(state.User, Permissions.Contacts.Import)).Succeeded;
         _canExport = (await AuthService.AuthorizeAsync(state.User, Permissions.Contacts.Export)).Succeeded;
     }
-    private async Task<GridData<ContactDto>> ServerReload(GridState<ContactDto> state)
+    private async Task<GridData<ContactDto>> ServerReload(MudBlazor.GridState<ContactDto> state)
     {
         try
         {

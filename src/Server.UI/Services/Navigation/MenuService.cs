@@ -38,6 +38,12 @@ public class MenuService : IMenuService
                             Title = "Contacts",
                             Href = "/pages/contacts",
                             PageStatus = PageStatus.Completed
+                        },
+                        new()
+                        {
+                            Title = "Telerik Data",
+                            Href = "/pages/telerikdata",
+                            PageStatus = PageStatus.Completed
                         }
                     }
                 },
