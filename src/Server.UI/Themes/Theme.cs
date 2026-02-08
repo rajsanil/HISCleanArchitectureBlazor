@@ -8,57 +8,58 @@ public static class Theme
         {
             PaletteLight = new PaletteLight
             {
-                Primary = "#0f172a", // Modern blue, professional and trustworthy
+                Primary = "#4F46E5", // Indigo-600, vibrant medical professional
                 PrimaryContrastText = "#ffffff",
-                PrimaryDarken = "#020617",
-                PrimaryLighten = "#1e293b",
-                Secondary = "#64748b", // Neutral gray, clean and professional
+                PrimaryDarken = "#4338CA", // Indigo-700
+                PrimaryLighten = "#6366F1", // Indigo-500
+                Secondary = "#6B7280", // Gray-500, clean neutral
                 SecondaryContrastText = "#ffffff",
-                SecondaryLighten = "#475569",
-                SecondaryDarken = "#94a3b8",
-                Success = "#10b981", // Fresh green, success
-                Info = "#0ea5e9", // Info blue, clear
-                Tertiary = "#8b5cf6",              // Purple 500
+                SecondaryLighten = "#9CA3AF", // Gray-400
+                SecondaryDarken = "#4B5563", // Gray-600
+                Success = "#10b981", // Emerald-500
+                Info = "#3B82F6", // Blue-500
+                Tertiary = "#8B5CF6", // Violet-500
                 TertiaryContrastText = "#ffffff",
-                TertiaryDarken = "#7c3aed",        // Purple 600
-                TertiaryLighten = "#a78bfa",       // Purple 400
+                TertiaryDarken = "#7C3AED", // Violet-600
+                TertiaryLighten = "#A78BFA", // Violet-400
 
-                Warning = "#f59e0b",               // Amber 500
-                WarningContrastText = "#92400e",   // Amber 800
-                WarningDarken = "#d97706",         // Amber 600
-                WarningLighten = "#fbbf24",        // Amber 400
+                Warning = "#F59E0B", // Amber-500
+                WarningContrastText = "#92400E", // Amber-800
+                WarningDarken = "#D97706", // Amber-600
+                WarningLighten = "#FBBF24", // Amber-400
 
-                Error = "#dc2626", // Clear red, error
+                Error = "#EF4444", // Red-500
                 ErrorContrastText = "#ffffff",
-                ErrorDarken = "#b91c1c",
-                ErrorLighten = "#ef4444",
+                ErrorDarken = "#DC2626", // Red-600
+                ErrorLighten = "#F87171", // Red-400
 
-                Black = "#020617", // Deep blue-black, more texture
+                Black = "#111827", // Gray-900
                 White = "#ffffff",
-                AppbarBackground = "#f8fafc", // Very light blue-gray, modern
-                AppbarText = "#0a0a0a",
-                Background = "#f8fafc", // Very light blue-gray, modern
+                AppbarBackground = "#ffffff", // Pure white AppBar
+                AppbarText = "#111827",
+                Background = "#F5F6FA", // Very light lavender-gray, MedEx style
+                BackgroundGray = "#F8F9FC", // Alternative soft gray-lavender
                 Surface = "#ffffff",
-                DrawerBackground = "#ffffff",
-                TextPrimary = "#0f172a", // Deep blue-gray, modern professional
-                TextSecondary = "#64748b", // Neutral gray, hierarchy
+                DrawerBackground = "#FAFBFC", // Very subtle off-white
+                TextPrimary = "#111827", // Gray-900
+                TextSecondary = "#6B7280", // Gray-500
 
-                TextDisabled = "#94a3b8", // Soft gray
-                ActionDefault = "#262626",
-                ActionDisabled = "rgba(100, 116, 139, 0.4)",
-                ActionDisabledBackground = "rgba(100, 116, 139, 0.1)",
-                Divider = "#e2e8f0", // Elegant divider
-                DividerLight = "#f1f5f9",
-                TableLines = "#e2e8f0", // Table lines, elegant
-                LinesDefault = "#e2e8f0",
-                LinesInputs = "#cbd5e1",
+                TextDisabled = "#9CA3AF", // Gray-400
+                ActionDefault = "#374151", // Gray-700
+                ActionDisabled = "rgba(107, 114, 128, 0.4)",
+                ActionDisabledBackground = "rgba(107, 114, 128, 0.1)",
+                Divider = "#E5E7EB", // Gray-200
+                DividerLight = "#F3F4F6", // Gray-100
+                TableLines = "#E5E7EB",
+                LinesDefault = "#E5E7EB",
+                LinesInputs = "#D1D5DB", // Gray-300
             },
             PaletteDark = new PaletteDark
             {
-                Primary = "#fafafa", // shadcn/ui white primary
-                PrimaryContrastText = "#020817",
-                PrimaryDarken = "#e4e4e7",
-                PrimaryLighten = "#ffffff",
+                Primary = "#818CF8", // Indigo-400. Vibrant on dark
+                PrimaryContrastText = "#1E1B4B", // Indigo-950
+                PrimaryDarken = "#6366F1", // Indigo-500
+                PrimaryLighten = "#A5B4FC", // Indigo-300
                 Secondary = "#78716c", // Neutral gray
                 Success = "#22c55e", // Green for success
                 Info = "#0ea5e9", // Sky blue for info (shadcn sky-500)
@@ -107,9 +108,9 @@ public static class Theme
             },
             LayoutProperties = new LayoutProperties
             {
-                AppbarHeight = "64px", // More modern height
-                DefaultBorderRadius = "8px", // More modern border radius
-                DrawerWidthLeft = "280px", // Wider sidebar
+                AppbarHeight = "64px",
+                DefaultBorderRadius = "12px", // Rounded, modern feel
+                DrawerWidthLeft = "270px",
                 DrawerMiniWidthRight = "260px"
             },
             Typography = new Typography

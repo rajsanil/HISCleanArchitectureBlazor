@@ -10,26 +10,24 @@
            Open="DrawerOpen"
            OpenChanged="@(e => DrawerOpenChanged.InvokeAsync(e))"
            Variant="DrawerVariant.Responsive">
-    <MudDrawerHeader Class="align-center d-flex align-center pa-0">
-        <MudIcon Class="ml-6 mr-2"
+    <MudDrawerHeader Class="align-center d-flex align-center pa-0" Style="min-height: 64px;">
+        <MudIcon Class="ml-5 mr-2"
                  Color="Color.Primary"
-                 Icon="@Icons.Custom.Brands.MudBlazor"
+                 Icon="@Icons.Material.Filled.LocalHospital"
                  Size="Size.Large"/>
-        <MudText Typo="Typo.h6">
-            @L[ApplicationSettings.AppName]
+        <MudText Typo="Typo.h6" Class="brand-text">
+            Blazor<span class="brand-accent">HIS</span>
         </MudText>
     </MudDrawerHeader>
 
-    <MudNavMenu>
+    <MudNavMenu Class="px-3">
         @foreach (var section in MenuSections.Where(x => x.Roles == null || x.Roles.Any(x => Roles.Contains(x))))
         {
             @if (section is not null)
             {
-                <div class="@(LayoutService.IsRTL ? "mr-6" : "ml-6") my-3">
-                    <MudText Typo="Typo.subtitle1">
-                        <b>
-                            @(L[section.Title])
-                        </b>
+                <div class="mt-4 mb-2 px-3">
+                    <MudText Typo="Typo.overline" Class="nav-section-title">
+                        @(L[section.Title])
                     </MudText>
                 </div>
 
@@ -40,7 +38,7 @@
                     {
                         @if (sectionItem is { IsParent: true, MenuItems: not null })
                         {
-                            <MudNavGroup Icon="@sectionItem.Icon" Title="@L[sectionItem.Title]" Expanded="Expanded(sectionItem)">
+                            <MudNavGroup Icon="@sectionItem.Icon" Title="@L[sectionItem.Title]" Expanded="Expanded(sectionItem)" Class="nav-group-medex">
                                 @foreach (var menuItem in sectionItem.MenuItems.Where(x => x.Roles == null || x.Roles.Any(x => Roles.Contains(x))))
                                 {
                                     <MudNavLink Disabled="@(menuItem.PageStatus != PageStatus.Completed)" Href="@(menuItem.Href)" Target="@(menuItem.Target)" Match="NavLinkMatch.Prefix">
@@ -79,40 +77,42 @@
         }
     </MudNavMenu>
 
-    <MudDivider Class="mt-auto"></MudDivider>
+    <MudSpacer />
+    <MudDivider Class="mx-3"></MudDivider>
     <MudNavMenu Class="d-flex justify-space-between pa-4">
-        <MudLink Href="#" Style="font-size:0.625rem;line-height:1.125rem;color:#6F6F6F !important">@L[ApplicationSettings.Copyright]</MudLink>
-        <MudText Class="" Style="font-size:0.625rem;line-height:1.125rem;color:#6F6F6F !important">@L["version"] @ApplicationSettings.Version</MudText>
+        <MudLink Href="#" Style="font-size:0.625rem;line-height:1.125rem;color:#9CA3AF !important">@L[ApplicationSettings.Copyright]</MudLink>
+        <MudText Style="font-size:0.625rem;line-height:1.125rem;color:#9CA3AF !important">@L["version"] @ApplicationSettings.Version</MudText>
     </MudNavMenu>
 
 </MudDrawer>
 
+<style>
+    /* MedEx-style active navigation link — pill shape */
+    .side-menu .mud-nav-link.active:not(.mud-nav-link-disabled) {
+        background-color: var(--mud-palette-primary) !important;
+        color: #ffffff !important;
+        border-radius: 10px !important;
+        border: none !important;
+        margin: 2px 0;
+    }
 
-@if (LayoutService.IsRTL)
-{
-    <style>
-        .mud-nav-link.active:not(.mud-nav-link-disabled) {
-            border-left: 3px solid var(--mud-palette-primary);
-            background-color: rgba(var(--mud-palette-primary-rgb), 0.1);
-        }
+    .side-menu .mud-nav-link.active:not(.mud-nav-link-disabled) .mud-icon-root {
+        color: #ffffff !important;
+    }
 
-        .side-menu {
-            border-left: 1px solid var(--mud-palette-table-lines)
-        }
-    </style>
-}
-else
-{
-    <style>
-        .mud-nav-link.active:not(.mud-nav-link-disabled) {
-            border-right: 3px solid var(--mud-palette-primary);
-        }
+    .side-menu .mud-nav-link.active:not(.mud-nav-link-disabled) .mud-nav-link-text {
+        color: #ffffff !important;
+    }
 
-        .side-menu {
-            border-right: 1px solid var(--mud-palette-table-lines)
-        }
-    </style>
-}
+    .side-menu .mud-nav-link:not(.active):hover {
+        background-color: rgba(var(--mud-palette-primary-rgb), 0.08) !important;
+        border-radius: 10px !important;
+    }
+
+    .side-menu {
+        border-right: 1px solid var(--mud-palette-table-lines);
+    }
+</style>
 
 @code
 {

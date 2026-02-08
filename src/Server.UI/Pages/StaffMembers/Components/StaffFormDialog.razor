@@ -1,0 +1,141 @@
+@using CleanArchitecture.Blazor.Application.Features.StaffMembers.Commands.AddEdit
+@using CleanArchitecture.Blazor.Application.Features.Departments.DTOs
+@using CleanArchitecture.Blazor.Application.Features.Departments.Queries.GetAll
+@using CleanArchitecture.Blazor.Application.Features.Specialties.DTOs
+@using CleanArchitecture.Blazor.Application.Features.Specialties.Queries.GetAll
+@using CleanArchitecture.Blazor.Application.Features.Identity.DTOs
+@using CleanArchitecture.Blazor.Domain.Common.Enums
+@using CleanArchitecture.Blazor.Server.UI.Components.Autocompletes
+@inject IStringLocalizer<StaffMembers> L
+
+<MudDialog>
+    <DialogContent>
+        <MudForm Model="@Model" @ref="@_form" Validation="@(Validator.ValidateValue(Model))">
+            <MudGrid Spacing="2">
+                <MudItem xs="12" sm="6">
+                    <MudTextField Label="@L["Employee Code"]" @bind-Value="Model.EmployeeCode" For="@(() => Model.EmployeeCode)" Required="true" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField Label="@L["Title"]" @bind-Value="Model.Title" For="@(() => Model.Title)" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField Label="@L["First Name"]" @bind-Value="Model.FirstName" For="@(() => Model.FirstName)" Required="true" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField Label="@L["Last Name"]" @bind-Value="Model.LastName" For="@(() => Model.LastName)" Required="true" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <PicklistAutocomplete Picklist="Picklist.StaffType" T="string" Label="@L["Staff Type"]" @bind-Value="Model.StaffType" For="@(() => Model.StaffType)" Required="true" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudSelect T="int?" Label="@L["Department"]" @bind-Value="Model.DepartmentId" For="@(() => Model.DepartmentId)" Clearable="true">
+                        @foreach (var dept in _departments)
+                        {
+                            <MudSelectItem T="int?" Value="@((int?)dept.Id)">@dept.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudSelect T="int?" Label="@L["Specialty"]" @bind-Value="Model.SpecialtyId" For="@(() => Model.SpecialtyId)" Clearable="true">
+                        @foreach (var spec in _specialties)
+                        {
+                            <MudSelectItem T="int?" Value="@((int?)spec.Id)">@spec.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField Label="@L["License Number"]" @bind-Value="Model.LicenseNumber" For="@(() => Model.LicenseNumber)" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <PickUserAutocomplete T="ApplicationUserDto" 
+                                          Label="@L["Application User"]" 
+                                          Value="@_selectedUser"
+                                          ValueChanged="@((ApplicationUserDto user) => { _selectedUser = user; Model.ApplicationUserId = user?.Id; })" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudCheckBox Label="@L["Is Active"]" @bind-Value="Model.IsActive" For="@(() => Model.IsActive)" />
+                </MudItem>
+            </MudGrid>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">@ConstantString.Cancel</MudButton>
+        <MudLoadingButton Loading="@_saveingnew" OnClick="SaveAndNew">@ConstantString.SaveAndNew</MudLoadingButton>
+        <MudLoadingButton Loading="@_saving" OnClick="Submit">@ConstantString.Save</MudLoadingButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    [EditorRequired][Parameter] public AddEditStaffCommand Model { get; set; } = default!;
+    [Parameter] public Action? Refresh { get; set; }
+    private MudForm? _form;
+    private bool _saving;
+    private bool _saveingnew;
+    private IEnumerable<DepartmentDto> _departments = Enumerable.Empty<DepartmentDto>();
+    private IEnumerable<SpecialtyDto> _specialties = Enumerable.Empty<SpecialtyDto>();
+    private ApplicationUserDto? _selectedUser;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _departments = await Mediator.Send(new GetAllDepartmentsQuery());
+        _specialties = await Mediator.Send(new GetAllSpecialtiesQuery());
+    }
+
+    private async Task Submit()
+    {
+        _saving = true;
+        try
+        {
+            await _form!.Validate().ConfigureAwait(false);
+            if (!_form!.IsValid) return;
+            var result = await Mediator.Send(Model);
+            result.Match(
+                data =>
+                {
+                    MudDialog.Close(DialogResult.Ok(true));
+                    Snackbar.Add(ConstantString.SaveSuccess, Severity.Info);
+                    return data;
+                },
+                errors =>
+                {
+                    Snackbar.Add(errors, Severity.Error);
+                    return 0;
+                });
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private async Task SaveAndNew()
+    {
+        _saveingnew = true;
+        try
+        {
+            await _form!.Validate().ConfigureAwait(false);
+            if (!_form!.IsValid) return;
+            var result = await Mediator.Send(Model);
+            result.Match(
+                data =>
+                {
+                    Snackbar.Add(ConstantString.SaveSuccess, Severity.Info);
+                    Refresh?.Invoke();
+                    Model = new AddEditStaffCommand();
+                    return data;
+                },
+                errors =>
+                {
+                    Snackbar.Add(result.ErrorMessage, Severity.Error);
+                    return 0;
+                });
+        }
+        finally
+        {
+            _saveingnew = false;
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

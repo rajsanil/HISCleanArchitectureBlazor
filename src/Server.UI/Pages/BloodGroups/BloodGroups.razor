@@ -1,0 +1,191 @@
+@page "/pages/bloodgroups"
+@using CleanArchitecture.Blazor.Application.Features.BloodGroups.DTOs
+@using CleanArchitecture.Blazor.Application.Features.BloodGroups.Queries.GetAll
+@using CleanArchitecture.Blazor.Application.Features.BloodGroups.Commands.AddEdit
+@using CleanArchitecture.Blazor.Application.Features.BloodGroups.Commands.Delete
+@using CleanArchitecture.Blazor.Application.Features.BloodGroups.Caching
+@using CleanArchitecture.Blazor.Application.Features.BloodGroups.Mappers
+@using CleanArchitecture.Blazor.Server.UI.Pages.BloodGroups.Components
+
+@inject IStringLocalizer<BloodGroups> L
+@attribute [Authorize(Policy = Permissions.BloodGroups.View)]
+
+<PageTitle>@L["Blood Groups"]</PageTitle>
+
+<MudPaper Elevation="0" Class="pa-4">
+    <TelerikGrid Data="@_bloodGroups"
+                 FilterMode="GridFilterMode.FilterMenu"
+                 Sortable="true"
+                 Pageable="true"
+                 PageSize="15"
+                 Resizable="true"
+                 Reorderable="true"
+                 SelectionMode="GridSelectionMode.Single"
+                 @bind-SelectedItems="@_selectedItems"
+                 Height="calc(100vh - 300px)">
+        <GridToolBarTemplate>
+            <MudStack Row Spacing="2" Class="flex-grow-1" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                <MudStack Row AlignItems="AlignItems.Center">
+                    <MudIcon Icon="@Icons.Material.Filled.Bloodtype" Size="Size.Large" Color="Color.Error" />
+                    <MudStack Spacing="0">
+                        <MudText Typo="Typo.h6">@L["Blood Groups"]</MudText>
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">@L["Manage blood group types"]</MudText>
+                    </MudStack>
+                </MudStack>
+                <MudStack Row Spacing="1">
+                    <MudButton Disabled="@_loading"
+                               OnClick="@OnRefresh"
+                               StartIcon="@Icons.Material.Outlined.Refresh"
+                               Variant="Variant.Text">
+                        @ConstantString.Refresh
+                    </MudButton>
+                    @if (_canCreate)
+                    {
+                        <MudButton StartIcon="@Icons.Material.Outlined.Add"
+                                   OnClick="OnCreate"
+                                   Color="Color.Primary"
+                                   Variant="Variant.Filled">
+                            @ConstantString.New
+                        </MudButton>
+                    }
+                </MudStack>
+            </MudStack>
+        </GridToolBarTemplate>
+        <GridColumns>
+            <GridColumn Width="100px" Title="@ConstantString.Actions" Sortable="false" Filterable="false">
+                <Template>
+                    @{
+                        var item = context as BloodGroupDto;
+                        @if (_canEdit || _canDelete)
+                        {
+                            <MudStack Row Spacing="1">
+                                @if (_canEdit)
+                                {
+                                    <MudIconButton Icon="@Icons.Material.Filled.Edit" 
+                                                 Size="Size.Small" 
+                                                 Color="Color.Info"
+                                                 OnClick="@(() => OnEdit(item!))" />
+                                }
+                                @if (_canDelete)
+                                {
+                                    <MudIconButton Icon="@Icons.Material.Filled.Delete" 
+                                                 Size="Size.Small" 
+                                                 Color="Color.Error"
+                                                 OnClick="@(() => OnDelete(item!))" />
+                                }
+                            </MudStack>
+                        }
+                        else
+                        {
+                            <MudIconButton Variant="Variant.Filled"
+                                         Disabled="true"
+                                         Icon="@Icons.Material.Filled.DoNotTouch"
+                                         Size="Size.Small"
+                                         Color="Color.Surface">
+                            </MudIconButton>
+                        }
+                    }
+                </Template>
+            </GridColumn>
+            <GridColumn Field="@nameof(BloodGroupDto.Code)" Title="@L["Code"]" Width="120px" />
+            <GridColumn Field="@nameof(BloodGroupDto.Name)" Title="@L["Name"]" />
+            <GridColumn Field="@nameof(BloodGroupDto.NameArabic)" Title="@L["Name (Arabic)"]" />
+            <GridColumn Field="@nameof(BloodGroupDto.DisplayOrder)" Title="@L["Display Order"]" Width="150px" />
+            <GridColumn Field="@nameof(BloodGroupDto.IsActive)" Title="@L["Active"]" Width="100px">
+                <Template>
+                    @{
+                        var item = context as BloodGroupDto;
+                        <MudCheckBox T="bool" Value="@(item?.IsActive ?? false)" ReadOnly="true" Color="Color.Primary" />
+                    }
+                </Template>
+            </GridColumn>
+        </GridColumns>
+    </TelerikGrid>
+</MudPaper>
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState> AuthState { get; set; } = default!;
+    
+    private IEnumerable<BloodGroupDto> _bloodGroups = new List<BloodGroupDto>();
+    private IEnumerable<BloodGroupDto> _selectedItems = new List<BloodGroupDto>();
+    private bool _loading;
+    private bool _canCreate;
+    private bool _canEdit;
+    private bool _canDelete;
+    private bool _canSearch;
+    private bool _canExport;
+    private bool _canImport;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await AuthState;
+        _canCreate = (await AuthService.AuthorizeAsync(state.User, Permissions.BloodGroups.Create)).Succeeded;
+        _canSearch = (await AuthService.AuthorizeAsync(state.User, Permissions.BloodGroups.Search)).Succeeded;
+        _canEdit = (await AuthService.AuthorizeAsync(state.User, Permissions.BloodGroups.Edit)).Succeeded;
+        _canDelete = (await AuthService.AuthorizeAsync(state.User, Permissions.BloodGroups.Delete)).Succeeded;
+        _canImport = (await AuthService.AuthorizeAsync(state.User, Permissions.BloodGroups.Import)).Succeeded;
+        _canExport = (await AuthService.AuthorizeAsync(state.User, Permissions.BloodGroups.Export)).Succeeded;
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        _loading = true;
+        try
+        {
+            _bloodGroups = await Mediator.Send(new GetAllBloodGroupsQuery());
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task OnRefresh()
+    {
+        BloodGroupCacheKey.Refresh();
+        await LoadData();
+    }
+
+    private async Task OnCreate()
+    {
+        var command = new AddEditBloodGroupCommand();
+        await ShowEditFormDialog(string.Format(ConstantString.CreateAnItem, L["Blood Group"]), command);
+    }
+
+    private async Task OnEdit(BloodGroupDto dto)
+    {
+        var command = BloodGroupMapper.CloneFromDto(dto);
+        await ShowEditFormDialog(string.Format(ConstantString.EditTheItem, L["Blood Group"]), command);
+    }
+
+    private async Task OnDelete(BloodGroupDto dto)
+    {
+        var contentText = string.Format(ConstantString.DeleteConfirmation, dto.Name);
+        var command = new DeleteBloodGroupCommand(new int[] { dto.Id });
+        await DialogServiceHelper.ShowDeleteConfirmationDialogAsync(command, ConstantString.DeleteConfirmationTitle, contentText, async () =>
+        {
+            await InvokeAsync(async () =>
+            {
+                await LoadData();
+            });
+        });
+    }
+
+    private async Task ShowEditFormDialog(string title, AddEditBloodGroupCommand command)
+    {
+        var parameters = new DialogParameters<BloodGroupFormDialog>
+        {
+            { x => x.Model, command }
+        };
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<BloodGroupFormDialog>(title, parameters, options);
+        var state = await dialog.Result;
+
+        if (state != null && !state.Canceled)
+        {
+            await LoadData();
+        }
+    }
+}
+

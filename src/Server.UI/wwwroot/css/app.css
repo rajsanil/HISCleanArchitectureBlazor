@@ -99,5 +99,126 @@
     padding: 0rem !important;
 }
 
+/* ===== MedEx Design System ===== */
+
+/* AppBar */
+.appbar-medex {
+    background-color: #ffffff !important;
+    border-bottom: 1px solid #E5E7EB !important;
+    box-shadow: none !important;
+}
+
+/* Brand text */
+.brand-text {
+    font-weight: 700;
+    letter-spacing: -0.025em;
+}
+
+.brand-accent {
+    color: var(--mud-palette-primary);
+}
+
+/* Centered search bar */
+.search-bar-wrapper {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background-color: #F3F4F6;
+    border-radius: 24px;
+    padding: 8px 20px;
+    max-width: 420px;
+    width: 100%;
+    transition: background-color 0.15s ease;
+}
+
+.search-bar-wrapper:hover {
+    background-color: #E5E7EB;
+}
+
+.search-bar-icon {
+    color: #9CA3AF;
+}
+
+.search-bar-placeholder {
+    color: #9CA3AF;
+    font-size: 0.875rem;
+    user-select: none;
+}
+
+/* User avatar */
+.user-avatar {
+    border: 2px solid var(--mud-palette-primary) !important;
+    cursor: pointer;
+}
+
+/* Navigation section titles */
+.nav-section-title {
+    color: #9CA3AF !important;
+    font-size: 0.7rem !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.08em !important;
+    text-transform: uppercase !important;
+}
+
+/* Nav group styling */
+.nav-group-medex .mud-nav-link {
+    padding-left: 24px;
+}
+
+/* ===== MedEx Light Background Theme ===== */
+
+/* Main content area with soft lavender-gray */
+.mud-main-content {
+    background: linear-gradient(135deg, #F5F6FA 0%, #F8F9FC 100%) !important;
+}
+
+/* MudContainer with enhanced spacing */
+.mud-container {
+    background-color: transparent;
+}
+
+/* Enhanced card styling for MedEx look */
+.mud-paper {
+    background-color: #ffffff !important;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.08), 0 1px 2px 0 rgba(0, 0, 0, 0.06) !important;
+    border-radius: 12px !important;
+}
+
+/* Drawer background */
+.mud-drawer {
+    background-color: #FAFBFC !important;
+}
+
+/* Light shadow for elevated elements */
+.mud-elevation-1 {
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.08), 0 1px 2px 0 rgba(0, 0, 0, 0.06) !important;
+}
+
+/* Dashboard stats cards with colorful backgrounds */
+.stats-card-primary {
+    background: linear-gradient(135deg, #E0E7FF 0%, #C7D2FE 100%);
+    border: none !important;
+}
+
+.stats-card-success {
+    background: linear-gradient(135deg, #D1FAE5 0%, #A7F3D0 100%);
+    border: none !important;
+}
+
+.stats-card-info {
+    background: linear-gradient(135deg, #DBEAFE 0%, #BFDBFE 100%);
+    border: none !important;
+}
+
+.stats-card-warning {
+    background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%);
+    border: none !important;
+}
+
+.stats-card-error {
+    background: linear-gradient(135deg, #FEE2E2 0%, #FECACA 100%);
+    border: none !important;
+}
 
 

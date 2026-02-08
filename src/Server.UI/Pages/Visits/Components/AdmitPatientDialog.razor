@@ -1,0 +1,131 @@
+@using CleanArchitecture.Blazor.Application.Features.Visits.Commands.Admit
+@using CleanArchitecture.Blazor.Application.Features.Locations.DTOs
+@using CleanArchitecture.Blazor.Application.Features.Locations.Queries.GetAll
+@using CleanArchitecture.Blazor.Application.Features.Rooms.DTOs
+@using CleanArchitecture.Blazor.Application.Features.Rooms.Queries.GetAll
+@using CleanArchitecture.Blazor.Application.Features.Beds.DTOs
+@using CleanArchitecture.Blazor.Application.Features.Beds.Queries.GetAll
+@using CleanArchitecture.Blazor.Application.Features.StaffMembers.DTOs
+@using CleanArchitecture.Blazor.Application.Features.StaffMembers.Queries.GetAll
+@inject IStringLocalizer<Visits> L
+
+<MudDialog>
+    <DialogContent>
+        <MudForm Model="@_command" @ref="@_form" Validation="@(Validator.ValidateValue(_command))">
+            <MudGrid Spacing="2">
+                <MudItem xs="12" sm="6">
+                    <MudSelect T="int" 
+                               Label="@L["Location"]" 
+                               @bind-Value="_command.LocationId"
+                               Clearable="false">
+                        @foreach (var loc in _locations)
+                        {
+                            <MudSelectItem T="int?" Value="@((int?)loc.Id)">@loc.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudSelect T="int" 
+                               Label="@L["Room"]" 
+                               @bind-Value="_command.RoomId"
+                               Clearable="false">
+                        @foreach (var room in _rooms)
+                        {
+                            <MudSelectItem T="int?" Value="@((int?)room.Id)">@room.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudSelect T="int" 
+                               Label="@L["Bed"]" 
+                               @bind-Value="_command.BedId"
+                               Clearable="false">
+                        @foreach (var bed in _beds.Where(b => b.BedStatus == "Available"))
+                        {
+                            <MudSelectItem T="int?" Value="@((int?)bed.Id)">@bed.Code</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudSelect T="int?" 
+                               Label="@L["Admitting Doctor"]" 
+                               Value="_command.AdmittingDoctorId"
+                               ValueChanged="(int? value) => _command.AdmittingDoctorId = value"
+                               Clearable="true">
+                        @foreach (var doctor in _doctors)
+                        {
+                            <MudSelectItem T="int?" Value="@((int?)doctor.Id)">@doctor.FullName</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudSelect T="string" Label="@L["Admission Type"]" @bind-Value="_command.AdmissionType" For="@(() => _command.AdmissionType)">
+                        <MudSelectItem T="string" Value="@("Elective")">Elective</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("Emergency")">Emergency</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudDatePicker Label="@L["Expected Discharge Date"]" 
+                                   Date="_command.ExpectedDischargeDate"
+                                   DateChanged="(DateTime? value) => _command.ExpectedDischargeDate = value" />
+                </MudItem>
+            </MudGrid>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">@ConstantString.Cancel</MudButton>
+        <MudLoadingButton Loading="@_saving" OnClick="Submit">@ConstantString.Save</MudLoadingButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    [EditorRequired][Parameter] public int VisitId { get; set; }
+    [Parameter] public Action? Refresh { get; set; }
+    private MudForm? _form;
+    private bool _saving;
+    private AdmitPatientCommand _command = new();
+    private IEnumerable<LocationDto> _locations = Enumerable.Empty<LocationDto>();
+    private IEnumerable<RoomDto> _rooms = Enumerable.Empty<RoomDto>();
+    private IEnumerable<BedDto> _beds = Enumerable.Empty<BedDto>();
+    private IEnumerable<StaffDto> _doctors = Enumerable.Empty<StaffDto>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _command.VisitId = VisitId;
+        _locations = await Mediator.Send(new GetAllLocationsQuery());
+        _rooms = await Mediator.Send(new GetAllRoomsQuery());
+        _beds = await Mediator.Send(new GetAllBedsQuery());
+        _doctors = await Mediator.Send(new GetAllStaffQuery());
+    }
+
+    private async Task Submit()
+    {
+        _saving = true;
+        try
+        {
+            await _form!.Validate().ConfigureAwait(false);
+            if (!_form!.IsValid) return;
+            var result = await Mediator.Send(_command);
+            result.Match(
+                data =>
+                {
+                    MudDialog.Close(DialogResult.Ok(true));
+                    Snackbar.Add(ConstantString.SaveSuccess, Severity.Info);
+                    Refresh?.Invoke();
+                    return data;
+                },
+                errors =>
+                {
+                    Snackbar.Add(errors, Severity.Error);
+                    return default!;
+                });
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

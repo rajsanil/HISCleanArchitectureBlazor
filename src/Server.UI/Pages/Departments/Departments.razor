@@ -1,0 +1,529 @@
+@page "/pages/departments"
+@using CleanArchitecture.Blazor.Application.Features.Departments.DTOs
+@using CleanArchitecture.Blazor.Application.Features.Departments.Mappers
+@using CleanArchitecture.Blazor.Application.Features.Departments.Queries.GetAll
+@using CleanArchitecture.Blazor.Application.Features.Departments.Caching
+@using CleanArchitecture.Blazor.Application.Features.Departments.Commands.AddEdit
+@using CleanArchitecture.Blazor.Application.Features.Departments.Commands.Delete
+@using CleanArchitecture.Blazor.Application.Features.Facilities.DTOs
+@using CleanArchitecture.Blazor.Application.Features.Facilities.Queries.GetAll
+
+@attribute [Authorize(Policy = Permissions.Departments.View)]
+@inject IStringLocalizer<Departments> L
+
+<PageTitle>@Title</PageTitle>
+
+<MudPaper Elevation="0" Class="pa-4">
+    @* ── Header Toolbar ── *@
+    <MudStack Row Spacing="0" Class="mb-3" Justify="Justify.SpaceBetween">
+        <MudStack Row AlignItems="AlignItems.Center">
+            <MudIcon Icon="@Icons.Material.Filled.AccountTree" Size="Size.Large" Color="Color.Primary" />
+            <MudStack Spacing="0">
+                <MudText Typo="Typo.h6">@Title</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">@L["Manage departments across facilities"]</MudText>
+            </MudStack>
+        </MudStack>
+        <MudStack Row Spacing="1" AlignItems="AlignItems.Center" Class="flex-wrap">
+            @if (_canSearch)
+            {
+                <MudTextField T="string"
+                              Value="@_searchString"
+                              ValueChanged="@OnSearch"
+                              Placeholder="@ConstantString.Search"
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Search"
+                              IconSize="Size.Small"
+                              Class="mt-0"
+                              Style="min-width:200px;" />
+            }
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Default"
+                       StartIcon="@Icons.Material.Outlined.Refresh"
+                       OnClick="OnRefresh"
+                       Disabled="@_loading">
+                @ConstantString.Refresh
+            </MudButton>
+            @if (_canCreate)
+            {
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Outlined.Add"
+                           OnClick="OnCreate">
+                    @ConstantString.New
+                </MudButton>
+            }
+            @if (_canCreate)
+            {
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Outlined.ContentCopy"
+                           OnClick="OnClone"
+                           Disabled="@(_selectedItems?.Count() != 1)">
+                    @ConstantString.Clone
+                </MudButton>
+            }
+            @if (_canDelete)
+            {
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Error"
+                           StartIcon="@Icons.Material.Outlined.Delete"
+                           OnClick="OnDeleteChecked"
+                           Disabled="@(!(_selectedItems?.Any() ?? false))">
+                    @ConstantString.Delete (@(_selectedItems?.Count() ?? 0))
+                </MudButton>
+            }
+        </MudStack>
+    </MudStack>
+
+    @* ── Telerik Data Grid ── *@
+    <div class="telerik-grid-container">
+        <TelerikGrid Data="@_filteredItems"
+                     Pageable="true"
+                     PageSize="@_pageSize"
+                     @bind-Page="@_currentPage"
+                     Sortable="true"
+                     SortMode="@Telerik.Blazor.SortMode.Multiple"
+                     FilterMode="@GridFilterMode.FilterRow"
+                     Resizable="true"
+                     Reorderable="true"
+                     SelectionMode="@GridSelectionMode.Multiple"
+                     @bind-SelectedItems="@_selectedItems"
+                     Height="calc(100vh - 340px)"
+                     OnRowDoubleClick="@OnRowDoubleClick">
+            <GridColumns>
+                <GridCheckboxColumn Width="50px" SelectAll="true" />
+                <GridColumn Field="@nameof(DepartmentDto.Code)"
+                            Title="@L["Code"]"
+                            Width="130px" />
+                <GridColumn Field="@nameof(DepartmentDto.Name)"
+                            Title="@L["Name"]"
+                            Width="220px" />
+                <GridColumn Field="@nameof(DepartmentDto.NameArabic)"
+                            Title="@L["Name (Arabic)"]"
+                            Width="200px" />
+                <GridColumn Field="@nameof(DepartmentDto.FacilityId)"
+                            Title="@L["Facility"]"
+                            Width="200px"
+                            Filterable="false">
+                    <Template>
+                        @{
+                            var item = (DepartmentDto)context;
+                            var facilityName = _facilityLookup.TryGetValue(item.FacilityId, out var fn) ? fn : item.FacilityId.ToString();
+                        }
+                        <span>@facilityName</span>
+                    </Template>
+                </GridColumn>
+                <GridColumn Field="@nameof(DepartmentDto.ParentDepartmentId)"
+                            Title="@L["Parent Department"]"
+                            Width="200px"
+                            Filterable="false">
+                    <Template>
+                        @{
+                            var item = (DepartmentDto)context;
+                            var parentName = item.ParentDepartmentId.HasValue && _departmentLookup.TryGetValue(item.ParentDepartmentId.Value, out var pn)
+                                ? pn : "—";
+                        }
+                        <span>@parentName</span>
+                    </Template>
+                </GridColumn>
+                <GridColumn Field="@nameof(DepartmentDto.IsActive)"
+                            Title="@L["Active"]"
+                            Width="110px"
+                            TextAlign="@ColumnTextAlign.Center">
+                    <Template>
+                        @{
+                            var item = (DepartmentDto)context;
+                        }
+                        <MudChip T="string" Size="Size.Small"
+                                 Color="@(item.IsActive ? Color.Success : Color.Default)"
+                                 Variant="Variant.Filled">
+                            @(item.IsActive ? L["Active"] : L["Inactive"])
+                        </MudChip>
+                    </Template>
+                </GridColumn>
+                <GridColumn Title="@ConstantString.Actions"
+                            Width="120px"
+                            Filterable="false"
+                            Sortable="false"
+                            TextAlign="@ColumnTextAlign.Center">
+                    <Template>
+                        @{
+                            var item = (DepartmentDto)context;
+                        }
+                        @if (_canEdit)
+                        {
+                            <MudIconButton Icon="@Icons.Material.Outlined.Edit"
+                                           Size="Size.Small"
+                                           Color="Color.Primary"
+                                           OnClick="@(() => OnEdit(item))"
+                                           Title="@ConstantString.Edit" />
+                        }
+                        @if (_canDelete)
+                        {
+                            <MudIconButton Icon="@Icons.Material.Outlined.Delete"
+                                           Size="Size.Small"
+                                           Color="Color.Error"
+                                           OnClick="@(() => OnDelete(item))"
+                                           Title="@ConstantString.Delete" />
+                        }
+                    </Template>
+                </GridColumn>
+            </GridColumns>
+        </TelerikGrid>
+    </div>
+</MudPaper>
+
+@* ── Telerik Window: Department Form ── *@
+<TelerikWindow @bind-Visible="@_formVisible"
+               Modal="true"
+               Width="680px"
+               Class="department-form-window">
+    <WindowTitle>
+        <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@Icons.Material.Filled.AccountTree" Color="Color.Primary" />
+            <MudText Typo="Typo.h6">@_formTitle</MudText>
+        </MudStack>
+    </WindowTitle>
+    <WindowActions>
+        <WindowAction Name="Close" />
+    </WindowActions>
+    <WindowContent>
+        @if (_editModel is not null)
+        {
+            <MudForm @ref="_form" Model="@_editModel" Validation="@(Validator.ValidateValue(_editModel))">
+                <MudGrid Spacing="3" Class="pa-2">
+                    <MudItem xs="12" sm="6">
+                        <MudTextField Label="@L["Code"]"
+                                      @bind-Value="_editModel.Code"
+                                      Required="true"
+                                      Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField Label="@L["Name"]"
+                                      @bind-Value="_editModel.Name"
+                                      Required="true"
+                                      Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField Label="@L["Name (Arabic)"]"
+                                      @bind-Value="_editModel.NameArabic"
+                                      Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudSelect T="int"
+                                   Label="@L["Facility"]"
+                                   @bind-Value="_editModel.FacilityId"
+                                   Required="true"
+                                   Variant="Variant.Outlined"
+                                   AnchorOrigin="Origin.BottomCenter">
+                            @foreach (var f in _facilities)
+                            {
+                                <MudSelectItem T="int" Value="@f.Id">@f.Name</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudSelect T="int?"
+                                   Label="@L["Parent Department"]"
+                                   @bind-Value="_editModel.ParentDepartmentId"
+                                   Clearable="true"
+                                   Variant="Variant.Outlined"
+                                   AnchorOrigin="Origin.BottomCenter">
+                            @foreach (var d in _allDepartments.Where(d => d.Id != _editModel.Id))
+                            {
+                                <MudSelectItem T="int?" Value="@((int?)d.Id)">@d.Name</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" sm="6" Class="d-flex align-center">
+                        <MudCheckBox Label="@L["Is Active"]"
+                                     @bind-Value="_editModel.IsActive"
+                                     Color="Color.Primary" />
+                    </MudItem>
+                </MudGrid>
+            </MudForm>
+
+            <MudStack Row Spacing="2" Justify="Justify.FlexEnd" Class="pa-2 mt-2">
+                <MudButton Variant="Variant.Text"
+                           Color="Color.Default"
+                           OnClick="CloseForm">
+                    @ConstantString.Cancel
+                </MudButton>
+                <MudLoadingButton Variant="Variant.Outlined"
+                                  Color="Color.Primary"
+                                  Loading="@_savingNew"
+                                  OnClick="SaveAndNew">
+                    @ConstantString.SaveAndNew
+                </MudLoadingButton>
+                <MudLoadingButton Variant="Variant.Filled"
+                                  Color="Color.Primary"
+                                  Loading="@_saving"
+                                  OnClick="SubmitForm">
+                    @ConstantString.Save
+                </MudLoadingButton>
+            </MudStack>
+        }
+    </WindowContent>
+</TelerikWindow>
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState> AuthState { get; set; } = default!;
+    [CascadingParameter] private UserProfile? UserProfile { get; set; }
+
+    // ── Grid state ──
+    public string? Title { get; private set; }
+    private List<DepartmentDto> _allDepartments = new();
+    private List<DepartmentDto> _filteredItems = new();
+    private IEnumerable<DepartmentDto> _selectedItems { get; set; } = new List<DepartmentDto>();
+    private bool _loading;
+    private int _pageSize = 15;
+    private int _currentPage = 1;
+    private string _searchString = string.Empty;
+
+    // ── Lookup dictionaries for display ──
+    private List<FacilityDto> _facilities = new();
+    private Dictionary<int, string> _facilityLookup = new();
+    private Dictionary<int, string> _departmentLookup = new();
+
+    // ── Permissions ──
+    private bool _canSearch;
+    private bool _canCreate;
+    private bool _canEdit;
+    private bool _canDelete;
+
+    // ── Form state ──
+    private bool _formVisible;
+    private string _formTitle = string.Empty;
+    private AddEditDepartmentCommand? _editModel;
+    private MudForm? _form;
+    private bool _saving;
+    private bool _savingNew;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Title = L["Departments"];
+        var state = await AuthState;
+        _canCreate = (await AuthService.AuthorizeAsync(state.User, Permissions.Departments.Create)).Succeeded;
+        _canSearch = (await AuthService.AuthorizeAsync(state.User, Permissions.Departments.Search)).Succeeded;
+        _canEdit = (await AuthService.AuthorizeAsync(state.User, Permissions.Departments.Edit)).Succeeded;
+        _canDelete = (await AuthService.AuthorizeAsync(state.User, Permissions.Departments.Delete)).Succeeded;
+
+        _facilities = (await Mediator.Send(new GetAllFacilitiesQuery())).ToList();
+        _facilityLookup = _facilities.ToDictionary(f => f.Id, f => f.Name);
+
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        _loading = true;
+        try
+        {
+            var result = await Mediator.Send(new GetAllDepartmentsQuery());
+            _allDepartments = result.ToList();
+            _departmentLookup = _allDepartments.ToDictionary(d => d.Id, d => d.Name);
+            ApplySearch();
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void ApplySearch()
+    {
+        _filteredItems = string.IsNullOrWhiteSpace(_searchString)
+            ? _allDepartments.ToList()
+            : _allDepartments.Where(x =>
+                x.Name.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ||
+                x.Code.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ||
+                (x.NameArabic?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false)
+            ).ToList();
+    }
+
+    private void OnSearch(string text)
+    {
+        _searchString = text;
+        ApplySearch();
+    }
+
+    private async Task OnRefresh()
+    {
+        DepartmentCacheKey.Refresh();
+        _selectedItems = new List<DepartmentDto>();
+        _searchString = string.Empty;
+        await LoadData();
+    }
+
+    private void OnRowDoubleClick(GridRowClickEventArgs args)
+    {
+        if (_canEdit && args.Item is DepartmentDto dto)
+        {
+            OnEdit(dto);
+        }
+    }
+
+    // ── CRUD Operations ──
+
+    private void OnCreate()
+    {
+        _editModel = new AddEditDepartmentCommand();
+        _formTitle = string.Format(ConstantString.CreateAnItem, L["Department"]);
+        _formVisible = true;
+    }
+
+    private void OnClone()
+    {
+        var copy = _selectedItems.FirstOrDefault();
+        if (copy is null) return;
+        _editModel = DepartmentMapper.CloneFromDto(copy);
+        _formTitle = string.Format(ConstantString.CreateAnItem, L["Department"]);
+        _formVisible = true;
+    }
+
+    private void OnEdit(DepartmentDto dto)
+    {
+        _editModel = DepartmentMapper.ToEditCommand(dto);
+        _formTitle = string.Format(ConstantString.EditTheItem, L["Department"]);
+        _formVisible = true;
+    }
+
+    private async Task OnDelete(DepartmentDto dto)
+    {
+        var contentText = string.Format(ConstantString.DeleteConfirmation, dto.Name);
+        var command = new DeleteDepartmentCommand(new[] { dto.Id });
+        await DialogServiceHelper.ShowDeleteConfirmationDialogAsync(command, ConstantString.DeleteConfirmationTitle, contentText, async () =>
+        {
+            await InvokeAsync(async () =>
+            {
+                await LoadData();
+                _selectedItems = new List<DepartmentDto>();
+            });
+        });
+    }
+
+    private async Task OnDeleteChecked()
+    {
+        var selected = _selectedItems.ToList();
+        if (!selected.Any()) return;
+        var contentText = string.Format(ConstantString.DeleteConfirmWithSelected, selected.Count);
+        var command = new DeleteDepartmentCommand(selected.Select(x => x.Id).ToArray());
+        await DialogServiceHelper.ShowDeleteConfirmationDialogAsync(command, ConstantString.DeleteConfirmationTitle, contentText, async () =>
+        {
+            await InvokeAsync(async () =>
+            {
+                await LoadData();
+                _selectedItems = new List<DepartmentDto>();
+            });
+        });
+    }
+
+    // ── Form Actions ──
+
+    private bool IsDuplicateCode()
+    {
+        if (_editModel is null || string.IsNullOrWhiteSpace(_editModel.Code) || _editModel.FacilityId == 0)
+            return false;
+        return _allDepartments.Any(d =>
+            d.Code.Equals(_editModel.Code, StringComparison.OrdinalIgnoreCase) &&
+            d.FacilityId == _editModel.FacilityId &&
+            d.Id != _editModel.Id);
+    }
+
+    private async Task SubmitForm()
+    {
+        if (_editModel is null) return;
+        _saving = true;
+        try
+        {
+            await _form!.Validate();
+            if (!_form!.IsValid) return;
+
+            if (IsDuplicateCode())
+            {
+                Snackbar.Add(L[$"A department with code '{_editModel.Code}' already exists for this facility."], Severity.Warning);
+                return;
+            }
+
+            var result = await Mediator.Send(_editModel);
+            result.Match(
+                data =>
+                {
+                    _formVisible = false;
+                    Snackbar.Add(ConstantString.SaveSuccess, Severity.Info);
+                    return data;
+                },
+                errors =>
+                {
+                    if (errors.Contains("IX_Departments_Code_FacilityId", StringComparison.OrdinalIgnoreCase) ||
+                        errors.Contains("duplicate key", StringComparison.OrdinalIgnoreCase) ||
+                        errors.Contains("unique constraint", StringComparison.OrdinalIgnoreCase))
+                    {
+                        Snackbar.Add(L[$"A department with code '{_editModel.Code}' already exists for this facility."], Severity.Error);
+                    }
+                    else
+                    {
+                        Snackbar.Add(errors, Severity.Error);
+                    }
+                    return 0;
+                });
+            await LoadData();
+            _selectedItems = new List<DepartmentDto>();
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private async Task SaveAndNew()
+    {
+        if (_editModel is null) return;
+        _savingNew = true;
+        try
+        {
+            await _form!.Validate();
+            if (!_form!.IsValid) return;
+
+            if (IsDuplicateCode())
+            {
+                Snackbar.Add(L[$"A department with code '{_editModel.Code}' already exists for this facility."], Severity.Warning);
+                return;
+            }
+
+            var result = await Mediator.Send(_editModel);
+            result.Match(
+                data =>
+                {
+                    Snackbar.Add(ConstantString.SaveSuccess, Severity.Info);
+                    _editModel = new AddEditDepartmentCommand();
+                    return data;
+                },
+                errors =>
+                {
+                    if (errors.Contains("IX_Departments_Code_FacilityId", StringComparison.OrdinalIgnoreCase) ||
+                        errors.Contains("duplicate key", StringComparison.OrdinalIgnoreCase) ||
+                        errors.Contains("unique constraint", StringComparison.OrdinalIgnoreCase))
+                    {
+                        Snackbar.Add(L[$"A department with code '{_editModel.Code}' already exists for this facility."], Severity.Error);
+                    }
+                    else
+                    {
+                        Snackbar.Add(errors, Severity.Error);
+                    }
+                    return 0;
+                });
+            await LoadData();
+        }
+        finally
+        {
+            _savingNew = false;
+        }
+    }
+
+    private void CloseForm()
+    {
+        _formVisible = false;
+        _editModel = null;
+    }
+}

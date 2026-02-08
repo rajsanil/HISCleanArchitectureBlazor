@@ -4,19 +4,27 @@
     --kendo-border-radius: 4px;
 }
 
+/* MedEx Light Theme Adjustments */
+.k-grid,
+.k-window,
+.k-dialog {
+    background-color: #ffffff;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.08), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+    border: none;
+}
+
 /* Light theme (default) */
 .k-grid {
-    border: 1px solid rgba(0, 0, 0, 0.12);
-    border-radius: 4px;
+    border-radius: 12px;
     font-family: 'Roboto', sans-serif;
     background-color: #fff;
     color: rgba(0, 0, 0, 0.87);
 }
 
 .k-grid-header {
-    background-color: #f5f5f5;
+    background-color: #F9FAFB;
     font-weight: 500;
-    border-bottom: 2px solid rgba(0, 0, 0, 0.12);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
 }
 
 .k-grid-header .k-header {
@@ -30,7 +38,7 @@
 }
 
 .k-grid tbody tr.k-selected {
-    background-color: #594ae2;
+    background-color: #4F46E5;
     color: #fff;
 }
 
@@ -46,8 +54,8 @@
 }
 
 .k-button-primary {
-    background-color: #594ae2;
-    border-color: #594ae2;
+    background-color: #4F46E5;
+    border-color: #4F46E5;
 }
 
 .k-grid .k-command-cell .k-button {
@@ -142,7 +150,7 @@
 }
 
 .telerik-dark-theme .k-pager .k-state-selected {
-    background-color: #594ae2 !important;
+    background-color: #4F46E5 !important;
     color: #fff !important;
 }
 

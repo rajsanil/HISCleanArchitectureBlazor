@@ -1,0 +1,191 @@
+@page "/pages/maritalstatuses"
+@using CleanArchitecture.Blazor.Application.Features.MaritalStatuses.DTOs
+@using CleanArchitecture.Blazor.Application.Features.MaritalStatuses.Queries.GetAll
+@using CleanArchitecture.Blazor.Application.Features.MaritalStatuses.Commands.AddEdit
+@using CleanArchitecture.Blazor.Application.Features.MaritalStatuses.Commands.Delete
+@using CleanArchitecture.Blazor.Application.Features.MaritalStatuses.Caching
+@using CleanArchitecture.Blazor.Application.Features.MaritalStatuses.Mappers
+@using CleanArchitecture.Blazor.Server.UI.Pages.MaritalStatuses.Components
+
+@inject IStringLocalizer<MaritalStatuses> L
+@attribute [Authorize(Policy = Permissions.MaritalStatuses.View)]
+
+<PageTitle>@L["Marital Statuses"]</PageTitle>
+
+<MudPaper Elevation="0" Class="pa-4">
+    <TelerikGrid Data="@_maritalStatuses"
+                 FilterMode="GridFilterMode.FilterMenu"
+                 Sortable="true"
+                 Pageable="true"
+                 PageSize="15"
+                 Resizable="true"
+                 Reorderable="true"
+                 SelectionMode="GridSelectionMode.Single"
+                 @bind-SelectedItems="@_selectedItems"
+                 Height="calc(100vh - 300px)">
+        <GridToolBarTemplate>
+            <MudStack Row Spacing="2" Class="flex-grow-1" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                <MudStack Row AlignItems="AlignItems.Center">
+                    <MudIcon Icon="@Icons.Material.Filled.Favorite" Size="Size.Large" Color="Color.Secondary" />
+                    <MudStack Spacing="0">
+                        <MudText Typo="Typo.h6">@L["Marital Statuses"]</MudText>
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">@L["Manage marital status types"]</MudText>
+                    </MudStack>
+                </MudStack>
+                <MudStack Row Spacing="1">
+                    <MudButton Disabled="@_loading"
+                               OnClick="@OnRefresh"
+                               StartIcon="@Icons.Material.Outlined.Refresh"
+                               Variant="Variant.Text">
+                        @ConstantString.Refresh
+                    </MudButton>
+                    @if (_canCreate)
+                    {
+                        <MudButton StartIcon="@Icons.Material.Outlined.Add"
+                                   OnClick="OnCreate"
+                                   Color="Color.Primary"
+                                   Variant="Variant.Filled">
+                            @ConstantString.New
+                        </MudButton>
+                    }
+                </MudStack>
+            </MudStack>
+        </GridToolBarTemplate>
+        <GridColumns>
+            <GridColumn Width="100px" Title="@ConstantString.Actions" Sortable="false" Filterable="false">
+                <Template>
+                    @{
+                        var item = context as MaritalStatusDto;
+                        @if (_canEdit || _canDelete)
+                        {
+                            <MudStack Row Spacing="1">
+                                @if (_canEdit)
+                                {
+                                    <MudIconButton Icon="@Icons.Material.Filled.Edit" 
+                                                 Size="Size.Small" 
+                                                 Color="Color.Info"
+                                                 OnClick="@(() => OnEdit(item!))" />
+                                }
+                                @if (_canDelete)
+                                {
+                                    <MudIconButton Icon="@Icons.Material.Filled.Delete" 
+                                                 Size="Size.Small" 
+                                                 Color="Color.Error"
+                                                 OnClick="@(() => OnDelete(item!))" />
+                                }
+                            </MudStack>
+                        }
+                        else
+                        {
+                            <MudIconButton Variant="Variant.Filled"
+                                         Disabled="true"
+                                         Icon="@Icons.Material.Filled.DoNotTouch"
+                                         Size="Size.Small"
+                                         Color="Color.Surface">
+                            </MudIconButton>
+                        }
+                    }
+                </Template>
+            </GridColumn>
+            <GridColumn Field="@nameof(MaritalStatusDto.Code)" Title="@L["Code"]" Width="120px" />
+            <GridColumn Field="@nameof(MaritalStatusDto.Name)" Title="@L["Name"]" />
+            <GridColumn Field="@nameof(MaritalStatusDto.NameArabic)" Title="@L["Name (Arabic)"]" />
+            <GridColumn Field="@nameof(MaritalStatusDto.DisplayOrder)" Title="@L["Display Order"]" Width="150px" />
+            <GridColumn Field="@nameof(MaritalStatusDto.IsActive)" Title="@L["Active"]" Width="100px">
+                <Template>
+                    @{
+                        var item = context as MaritalStatusDto;
+                        <MudCheckBox T="bool" Value="@(item?.IsActive ?? false)" ReadOnly="true" Color="Color.Primary" />
+                    }
+                </Template>
+            </GridColumn>
+        </GridColumns>
+    </TelerikGrid>
+</MudPaper>
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState> AuthState { get; set; } = default!;
+    
+    private IEnumerable<MaritalStatusDto> _maritalStatuses = new List<MaritalStatusDto>();
+    private IEnumerable<MaritalStatusDto> _selectedItems = new List<MaritalStatusDto>();
+    private bool _loading;
+    private bool _canCreate;
+    private bool _canEdit;
+    private bool _canDelete;
+    private bool _canSearch;
+    private bool _canExport;
+    private bool _canImport;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await AuthState;
+        _canCreate = (await AuthService.AuthorizeAsync(state.User, Permissions.MaritalStatuses.Create)).Succeeded;
+        _canSearch = (await AuthService.AuthorizeAsync(state.User, Permissions.MaritalStatuses.Search)).Succeeded;
+        _canEdit = (await AuthService.AuthorizeAsync(state.User, Permissions.MaritalStatuses.Edit)).Succeeded;
+        _canDelete = (await AuthService.AuthorizeAsync(state.User, Permissions.MaritalStatuses.Delete)).Succeeded;
+        _canImport = (await AuthService.AuthorizeAsync(state.User, Permissions.MaritalStatuses.Import)).Succeeded;
+        _canExport = (await AuthService.AuthorizeAsync(state.User, Permissions.MaritalStatuses.Export)).Succeeded;
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        _loading = true;
+        try
+        {
+            _maritalStatuses = await Mediator.Send(new GetAllMaritalStatusesQuery());
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task OnRefresh()
+    {
+        MaritalStatusCacheKey.Refresh();
+        await LoadData();
+    }
+
+    private async Task OnCreate()
+    {
+        var command = new AddEditMaritalStatusCommand();
+        await ShowEditFormDialog(string.Format(ConstantString.CreateAnItem, L["Marital Status"]), command);
+    }
+
+    private async Task OnEdit(MaritalStatusDto dto)
+    {
+        var command = MaritalStatusMapper.CloneFromDto(dto);
+        await ShowEditFormDialog(string.Format(ConstantString.EditTheItem, L["Marital Status"]), command);
+    }
+
+    private async Task OnDelete(MaritalStatusDto dto)
+    {
+        var contentText = string.Format(ConstantString.DeleteConfirmation, dto.Name);
+        var command = new DeleteMaritalStatusCommand(new int[] { dto.Id });
+        await DialogServiceHelper.ShowDeleteConfirmationDialogAsync(command, ConstantString.DeleteConfirmationTitle, contentText, async () =>
+        {
+            await InvokeAsync(async () =>
+            {
+                await LoadData();
+            });
+        });
+    }
+
+    private async Task ShowEditFormDialog(string title, AddEditMaritalStatusCommand command)
+    {
+        var parameters = new DialogParameters<MaritalStatusFormDialog>
+        {
+            { x => x.Model, command }
+        };
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<MaritalStatusFormDialog>(title, parameters, options);
+        var state = await dialog.Result;
+
+        if (state != null && !state.Canceled)
+        {
+            await LoadData();
+        }
+    }
+}
+

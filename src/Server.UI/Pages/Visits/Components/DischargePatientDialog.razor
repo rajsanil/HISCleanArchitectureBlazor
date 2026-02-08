@@ -1,0 +1,90 @@
+@using CleanArchitecture.Blazor.Application.Features.Visits.Commands.Discharge
+@using CleanArchitecture.Blazor.Application.Features.StaffMembers.DTOs
+@using CleanArchitecture.Blazor.Application.Features.StaffMembers.Queries.GetAll
+@using CleanArchitecture.Blazor.Domain.Common.Enums
+@inject IStringLocalizer<Visits> L
+
+<MudDialog>
+    <DialogContent>
+        <MudForm Model="@_command" @ref="@_form" Validation="@(Validator.ValidateValue(_command))">
+            <MudGrid Spacing="2">
+                <MudItem xs="12" sm="6">
+                    <PicklistAutocomplete Picklist="Picklist.DischargeDisposition" T="string" Label="@L["Discharge Disposition"]" @bind-Value="_command.DischargeDisposition" For="@(() => _command.DischargeDisposition)" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudSelect T="int?" 
+                               Label="@L["Discharged By Doctor"]" 
+                               Value="_command.DischargedByDoctorId"
+                               ValueChanged="(int? value) => _command.DischargedByDoctorId = value"
+                               Clearable="true">
+                        @foreach (var doctor in _doctors)
+                        {
+                            <MudSelectItem T="int?" Value="@((int?)doctor.Id)">@doctor.FullName</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12">
+                    <MudTextField Label="@L["Discharge Summary"]" @bind-Value="_command.DischargeSummary" For="@(() => _command.DischargeSummary)" Lines="4" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudDatePicker Label="@L["Follow Up Date"]" 
+                                   Date="_command.FollowUpDate"
+                                   DateChanged="(DateTime? value) => _command.FollowUpDate = value" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField Label="@L["Follow Up Notes"]" @bind-Value="_command.FollowUpNotes" For="@(() => _command.FollowUpNotes)" />
+                </MudItem>
+            </MudGrid>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">@ConstantString.Cancel</MudButton>
+        <MudLoadingButton Loading="@_saving" OnClick="Submit">@ConstantString.Save</MudLoadingButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    [EditorRequired][Parameter] public int VisitId { get; set; }
+    [Parameter] public Action? Refresh { get; set; }
+    private MudForm? _form;
+    private bool _saving;
+    private DischargePatientCommand _command = new();
+    private IEnumerable<StaffDto> _doctors = Enumerable.Empty<StaffDto>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _command.VisitId = VisitId;
+        _doctors = await Mediator.Send(new GetAllStaffQuery());
+    }
+
+    private async Task Submit()
+    {
+        _saving = true;
+        try
+        {
+            await _form!.Validate().ConfigureAwait(false);
+            if (!_form!.IsValid) return;
+            var result = await Mediator.Send(_command);
+            result.Match(
+                data =>
+                {
+                    MudDialog.Close(DialogResult.Ok(true));
+                    Snackbar.Add(ConstantString.SaveSuccess, Severity.Info);
+                    Refresh?.Invoke();
+                    return data;
+                },
+                errors =>
+                {
+                    Snackbar.Add(errors, Severity.Error);
+                    return default!;
+                });
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

@@ -10,22 +10,22 @@ public class UserPreference
 {
     public static readonly List<string> PrimaryColors = new()
     {
-        "#2d4275", // 蓝色
-        "#6A1B9A", // 深紫色
-        "#4CAF50" , // 绿色
-        "#FF9800", // 橙色
-        "#F44336", // 红色
-        "#FF69B4" // 粉色
+        "#4F46E5", // Indigo
+        "#2563EB", // Blue
+        "#0891B2", // Cyan
+        "#059669", // Emerald
+        "#D97706", // Amber
+        "#DC2626" // Red
     };
 
     public static readonly List<string> DarkPrimaryColors = new()
     {
-        "#0077b6", // 蓝色的暗色调
-        "#a541be", // 深紫色的暗色调
-        "#388E3C",  // 绿色的暗色调
-        "#FB8C00", // 橙色的暗色调
-        "#ca322d", // 红色的暗色调
-        "#cf2d86", // 粉色的暗色调
+        "#818CF8", // Indigo light
+        "#60A5FA", // Blue light
+        "#22D3EE", // Cyan light
+        "#34D399", // Emerald light
+        "#FBBF24", // Amber light
+        "#F87171", // Red light
     };
 
     /// <summary>
@@ -38,8 +38,8 @@ public class UserPreference
     /// </summary>
     public bool IsDarkMode { get; set; }
 
-    public string PrimaryColor { get; set; } = "#2d4275";
-    public string DarkPrimaryColor { get; set; } = "#8b9ac6";
+    public string PrimaryColor { get; set; } = "#4F46E5";
+    public string DarkPrimaryColor { get; set; } = "#818CF8";
     public string PrimaryDarken => AdjustBrightness(PrimaryColor, 0.8);
     public string PrimaryLighten => AdjustBrightness(PrimaryColor, 0.7);
     public string SecondaryColor { get; set; } = "#ff4081ff";

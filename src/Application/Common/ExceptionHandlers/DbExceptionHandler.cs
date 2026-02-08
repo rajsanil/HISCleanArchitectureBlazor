@@ -45,10 +45,12 @@ public class DbExceptionHandler<TRequest, TResponse, TException> : IRequestExcep
             ? string.Join(", ", exception.ConstraintProperties)
             : "unknown properties";
 
+        // Extract table name without schema
+        var tableNameOnly = tableName.Contains('.') ? tableName.Split('.').Last() : tableName;
+
         return new[]
         {
-            $"A unique constraint violation occurred on constraint in table '{tableName}'. " +
-            $"'{properties}'. Please ensure the values are unique."
+            $"A record with this {properties} already exists. Please use a unique value."
         };
     }
     private  string[] GetCannotInsertNullExceptionErrors(CannotInsertNullException exception)

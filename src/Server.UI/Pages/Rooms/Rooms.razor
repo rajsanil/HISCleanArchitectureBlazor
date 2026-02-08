@@ -1,0 +1,462 @@
+@page "/pages/rooms"
+@using CleanArchitecture.Blazor.Application.Features.Rooms.DTOs
+@using CleanArchitecture.Blazor.Application.Features.Rooms.Mappers
+@using CleanArchitecture.Blazor.Application.Features.Rooms.Queries.GetAll
+@using CleanArchitecture.Blazor.Application.Features.Rooms.Caching
+@using CleanArchitecture.Blazor.Application.Features.Rooms.Commands.AddEdit
+@using CleanArchitecture.Blazor.Application.Features.Rooms.Commands.Delete
+@using CleanArchitecture.Blazor.Application.Features.Locations.DTOs
+@using CleanArchitecture.Blazor.Application.Features.Locations.Queries.GetAll
+
+@attribute [Authorize(Policy = Permissions.Departments.View)]
+@inject IStringLocalizer<Rooms> L
+
+<PageTitle>@Title</PageTitle>
+
+<MudPaper Elevation="0" Class="pa-4">
+    @* ── Header Toolbar ── *@
+    <MudStack Row Spacing="0" Class="mb-3" Justify="Justify.SpaceBetween">
+        <MudStack Row AlignItems="AlignItems.Center">
+            <MudIcon Icon="@Icons.Material.Filled.MeetingRoom" Size="Size.Large" Color="Color.Primary" />
+            <MudStack Spacing="0">
+                <MudText Typo="Typo.h6">@Title</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">@L["Manage hospital rooms and bed capacity"]</MudText>
+            </MudStack>
+        </MudStack>
+        <MudStack Row Spacing="1" AlignItems="AlignItems.Center" Class="flex-wrap">
+            @if (_canSearch)
+            {
+                <MudTextField T="string"
+                              Value="@_searchString"
+                              ValueChanged="@OnSearch"
+                              Placeholder="@ConstantString.Search"
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Search"
+                              IconSize="Size.Small"
+                              Class="mt-0"
+                              Style="min-width:200px;" />
+            }
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Default"
+                       StartIcon="@Icons.Material.Outlined.Refresh"
+                       OnClick="OnRefresh"
+                       Disabled="@_loading">
+                @ConstantString.Refresh
+            </MudButton>
+            @if (_canCreate)
+            {
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Outlined.Add"
+                           OnClick="OnCreate">
+                    @ConstantString.New
+                </MudButton>
+            }
+            @if (_canCreate)
+            {
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Outlined.ContentCopy"
+                           OnClick="OnClone"
+                           Disabled="@(_selectedItems?.Count() != 1)">
+                    @ConstantString.Clone
+                </MudButton>
+            }
+            @if (_canDelete)
+            {
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Error"
+                           StartIcon="@Icons.Material.Outlined.Delete"
+                           OnClick="OnDeleteChecked"
+                           Disabled="@(!(_selectedItems?.Any() ?? false))">
+                    @ConstantString.Delete (@(_selectedItems?.Count() ?? 0))
+                </MudButton>
+            }
+        </MudStack>
+    </MudStack>
+
+    @* ── Telerik Data Grid ── *@
+    <div class="telerik-grid-container">
+        <TelerikGrid Data="@_filteredItems"
+                     Pageable="true"
+                     PageSize="@_pageSize"
+                     @bind-Page="@_currentPage"
+                     Sortable="true"
+                     SortMode="@Telerik.Blazor.SortMode.Multiple"
+                     FilterMode="@GridFilterMode.FilterRow"
+                     Resizable="true"
+                     Reorderable="true"
+                     SelectionMode="@GridSelectionMode.Multiple"
+                     @bind-SelectedItems="@_selectedItems"
+                     Height="calc(100vh - 340px)"
+                     OnRowDoubleClick="@OnRowDoubleClick">
+            <GridColumns>
+                <GridCheckboxColumn Width="50px" SelectAll="true" />
+                <GridColumn Field="@nameof(RoomDto.Code)"
+                            Title="@L["Code"]"
+                            Width="130px" />
+                <GridColumn Field="@nameof(RoomDto.Name)"
+                            Title="@L["Name"]"
+                            Width="220px" />
+                <GridColumn Field="@nameof(RoomDto.RoomType)"
+                            Title="@L["Room Type"]"
+                            Width="180px" />
+                <GridColumn Field="@nameof(RoomDto.LocationId)"
+                            Title="@L["Location"]"
+                            Width="200px"
+                            Filterable="false">
+                    <Template>
+                        @{
+                            var item = (RoomDto)context;
+                            var locationName = _locationLookup.TryGetValue(item.LocationId, out var ln) ? ln : item.LocationId.ToString();
+                        }
+                        <span>@locationName</span>
+                    </Template>
+                </GridColumn>
+                <GridColumn Field="@nameof(RoomDto.IsActive)"
+                            Title="@L["Active"]"
+                            Width="110px"
+                            TextAlign="@ColumnTextAlign.Center">
+                    <Template>
+                        @{
+                            var item = (RoomDto)context;
+                        }
+                        <MudChip T="string" Size="Size.Small"
+                                 Color="@(item.IsActive ? Color.Success : Color.Default)"
+                                 Variant="Variant.Filled">
+                            @(item.IsActive ? L["Active"] : L["Inactive"])
+                        </MudChip>
+                    </Template>
+                </GridColumn>
+                <GridColumn Title="@ConstantString.Actions"
+                            Width="120px"
+                            Filterable="false"
+                            Sortable="false"
+                            TextAlign="@ColumnTextAlign.Center">
+                    <Template>
+                        @{
+                            var item = (RoomDto)context;
+                        }
+                        @if (_canEdit)
+                        {
+                            <MudIconButton Icon="@Icons.Material.Outlined.Edit"
+                                           Size="Size.Small"
+                                           Color="Color.Primary"
+                                           OnClick="@(() => OnEdit(item))"
+                                           Title="@ConstantString.Edit" />
+                        }
+                        @if (_canDelete)
+                        {
+                            <MudIconButton Icon="@Icons.Material.Outlined.Delete"
+                                           Size="Size.Small"
+                                           Color="Color.Error"
+                                           OnClick="@(() => OnDelete(item))"
+                                           Title="@ConstantString.Delete" />
+                        }
+                    </Template>
+                </GridColumn>
+            </GridColumns>
+        </TelerikGrid>
+    </div>
+</MudPaper>
+
+@* ── Telerik Window: Room Form ── *@
+<TelerikWindow @bind-Visible="@_formVisible"
+               Modal="true"
+               Width="680px"
+               Class="room-form-window">
+    <WindowTitle>
+        <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@Icons.Material.Filled.MeetingRoom" Color="Color.Primary" />
+            <MudText Typo="Typo.h6">@_formTitle</MudText>
+        </MudStack>
+    </WindowTitle>
+    <WindowActions>
+        <WindowAction Name="Close" />
+    </WindowActions>
+    <WindowContent>
+        @if (_editModel is not null)
+        {
+            <MudForm @ref="_form" Model="@_editModel" Validation="@(Validator.ValidateValue(_editModel))">
+                <MudGrid Spacing="3" Class="pa-2">
+                    <MudItem xs="12" sm="6">
+                        <MudTextField Label="@L["Code"]"
+                                      @bind-Value="_editModel.Code"
+                                      Required="true"
+                                      Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField Label="@L["Name"]"
+                                      @bind-Value="_editModel.Name"
+                                      Required="true"
+                                      Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <PicklistAutocomplete Picklist="Picklist.RoomType"
+                                              T="string"
+                                              Label="@L["Room Type"]"
+                                              @bind-Value="_editModel.RoomType"
+                                              Required="true" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudSelect T="int"
+                                   Label="@L["Location"]"
+                                   @bind-Value="_editModel.LocationId"
+                                   Required="true"
+                                   Variant="Variant.Outlined"
+                                   AnchorOrigin="Origin.BottomCenter">
+                            @foreach (var loc in _locations)
+                            {
+                                <MudSelectItem T="int" Value="@loc.Id">@loc.Name</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" sm="6" Class="d-flex align-center">
+                        <MudCheckBox Label="@L["Is Active"]"
+                                     @bind-Value="_editModel.IsActive"
+                                     Color="Color.Primary" />
+                    </MudItem>
+                </MudGrid>
+            </MudForm>
+
+            <MudStack Row Spacing="2" Justify="Justify.FlexEnd" Class="pa-2 mt-2">
+                <MudButton Variant="Variant.Text"
+                           Color="Color.Default"
+                           OnClick="CloseForm">
+                    @ConstantString.Cancel
+                </MudButton>
+                <MudLoadingButton Variant="Variant.Outlined"
+                                  Color="Color.Primary"
+                                  Loading="@_savingNew"
+                                  OnClick="SaveAndNew">
+                    @ConstantString.SaveAndNew
+                </MudLoadingButton>
+                <MudLoadingButton Variant="Variant.Filled"
+                                  Color="Color.Primary"
+                                  Loading="@_saving"
+                                  OnClick="SubmitForm">
+                    @ConstantString.Save
+                </MudLoadingButton>
+            </MudStack>
+        }
+    </WindowContent>
+</TelerikWindow>
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState> AuthState { get; set; } = default!;
+    [CascadingParameter] private UserProfile? UserProfile { get; set; }
+
+    // ── Grid state ──
+    public string? Title { get; private set; }
+    private List<RoomDto> _allRooms = new();
+    private List<RoomDto> _filteredItems = new();
+    private IEnumerable<RoomDto> _selectedItems { get; set; } = new List<RoomDto>();
+    private bool _loading;
+    private int _pageSize = 20;
+    private int _currentPage = 1;
+    private string _searchString = string.Empty;
+
+    // ── Lookup dictionaries for display ──
+    private List<LocationDto> _locations = new();
+    private Dictionary<int, string> _locationLookup = new();
+
+    // ── Permissions ──
+    private bool _canSearch;
+    private bool _canCreate;
+    private bool _canEdit;
+    private bool _canDelete;
+
+    // ── Form state ──
+    private bool _formVisible;
+    private string _formTitle = string.Empty;
+    private AddEditRoomCommand? _editModel;
+    private MudForm? _form;
+    private bool _saving;
+    private bool _savingNew;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Title = L["Rooms"];
+        var state = await AuthState;
+        _canCreate = (await AuthService.AuthorizeAsync(state.User, Permissions.Departments.Create)).Succeeded;
+        _canSearch = (await AuthService.AuthorizeAsync(state.User, Permissions.Departments.Search)).Succeeded;
+        _canEdit = (await AuthService.AuthorizeAsync(state.User, Permissions.Departments.Edit)).Succeeded;
+        _canDelete = (await AuthService.AuthorizeAsync(state.User, Permissions.Departments.Delete)).Succeeded;
+
+        _locations = (await Mediator.Send(new GetAllLocationsQuery())).ToList();
+        _locationLookup = _locations.ToDictionary(l => l.Id, l => l.Name);
+
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        _loading = true;
+        try
+        {
+            var result = await Mediator.Send(new GetAllRoomsQuery());
+            _allRooms = result.ToList();
+            ApplySearch();
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void ApplySearch()
+    {
+        _filteredItems = string.IsNullOrWhiteSpace(_searchString)
+            ? _allRooms.ToList()
+            : _allRooms.Where(x =>
+                x.Name.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ||
+                x.Code.Contains(_searchString, StringComparison.OrdinalIgnoreCase)
+            ).ToList();
+    }
+
+    private void OnSearch(string text)
+    {
+        _searchString = text;
+        ApplySearch();
+    }
+
+    private async Task OnRefresh()
+    {
+        RoomCacheKey.Refresh();
+        _selectedItems = new List<RoomDto>();
+        _searchString = string.Empty;
+        await LoadData();
+    }
+
+    private void OnRowDoubleClick(GridRowClickEventArgs args)
+    {
+        if (_canEdit && args.Item is RoomDto dto)
+        {
+            OnEdit(dto);
+        }
+    }
+
+    // ── CRUD Operations ──
+
+    private void OnCreate()
+    {
+        _editModel = new AddEditRoomCommand();
+        _formTitle = string.Format(ConstantString.CreateAnItem, L["Room"]);
+        _formVisible = true;
+    }
+
+    private void OnClone()
+    {
+        var copy = _selectedItems.FirstOrDefault();
+        if (copy is null) return;
+        _editModel = RoomMapper.CloneFromDto(copy);
+        _formTitle = string.Format(ConstantString.CreateAnItem, L["Room"]);
+        _formVisible = true;
+    }
+
+    private void OnEdit(RoomDto dto)
+    {
+        _editModel = RoomMapper.ToEditCommand(dto);
+        _formTitle = string.Format(ConstantString.EditTheItem, L["Room"]);
+        _formVisible = true;
+    }
+
+    private async Task OnDelete(RoomDto dto)
+    {
+        var contentText = string.Format(ConstantString.DeleteConfirmation, dto.Name);
+        var command = new DeleteRoomCommand(new[] { dto.Id });
+        await DialogServiceHelper.ShowDeleteConfirmationDialogAsync(command, ConstantString.DeleteConfirmationTitle, contentText, async () =>
+        {
+            await InvokeAsync(async () =>
+            {
+                await LoadData();
+                _selectedItems = new List<RoomDto>();
+            });
+        });
+    }
+
+    private async Task OnDeleteChecked()
+    {
+        var selected = _selectedItems.ToList();
+        if (!selected.Any()) return;
+        var contentText = string.Format(ConstantString.DeleteConfirmWithSelected, selected.Count);
+        var command = new DeleteRoomCommand(selected.Select(x => x.Id).ToArray());
+        await DialogServiceHelper.ShowDeleteConfirmationDialogAsync(command, ConstantString.DeleteConfirmationTitle, contentText, async () =>
+        {
+            await InvokeAsync(async () =>
+            {
+                await LoadData();
+                _selectedItems = new List<RoomDto>();
+            });
+        });
+    }
+
+    // ── Form Actions ──
+
+    private async Task SubmitForm()
+    {
+        if (_editModel is null) return;
+        _saving = true;
+        try
+        {
+            await _form!.Validate();
+            if (!_form!.IsValid) return;
+
+            var result = await Mediator.Send(_editModel);
+            result.Match(
+                data =>
+                {
+                    _formVisible = false;
+                    Snackbar.Add(ConstantString.SaveSuccess, Severity.Info);
+                    return data;
+                },
+                errors =>
+                {
+                    Snackbar.Add(errors, Severity.Error);
+                    return 0;
+                });
+            await LoadData();
+            _selectedItems = new List<RoomDto>();
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private async Task SaveAndNew()
+    {
+        if (_editModel is null) return;
+        _savingNew = true;
+        try
+        {
+            await _form!.Validate();
+            if (!_form!.IsValid) return;
+
+            var result = await Mediator.Send(_editModel);
+            result.Match(
+                data =>
+                {
+                    Snackbar.Add(ConstantString.SaveSuccess, Severity.Info);
+                    _editModel = new AddEditRoomCommand();
+                    return data;
+                },
+                errors =>
+                {
+                    Snackbar.Add(errors, Severity.Error);
+                    return 0;
+                });
+            await LoadData();
+        }
+        finally
+        {
+            _savingNew = false;
+        }
+    }
+
+    private void CloseForm()
+    {
+        _formVisible = false;
+        _editModel = null;
+    }
+}

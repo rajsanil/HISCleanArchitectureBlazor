@@ -1,0 +1,369 @@
+@page "/pages/encounters"
+@using CleanArchitecture.Blazor.Application.Features.Encounters.DTOs
+@using CleanArchitecture.Blazor.Application.Features.Encounters.Mappers
+@using CleanArchitecture.Blazor.Application.Features.Encounters.Queries.GetAll
+@using CleanArchitecture.Blazor.Application.Features.Encounters.Caching
+@using CleanArchitecture.Blazor.Application.Features.Encounters.Commands.Start
+@using CleanArchitecture.Blazor.Application.Features.Encounters.Commands.Delete
+@using CleanArchitecture.Blazor.Application.Features.Encounters.Commands.End
+@using CleanArchitecture.Blazor.Application.Features.Visits.DTOs
+@using CleanArchitecture.Blazor.Application.Features.Visits.Queries.GetAll
+@using CleanArchitecture.Blazor.Application.Features.StaffMembers.DTOs
+@using CleanArchitecture.Blazor.Application.Features.StaffMembers.Queries.GetAll
+@using CleanArchitecture.Blazor.Application.Features.Departments.DTOs
+@using CleanArchitecture.Blazor.Application.Features.Departments.Queries.GetAll
+@using CleanArchitecture.Blazor.Application.Features.Locations.DTOs
+@using CleanArchitecture.Blazor.Application.Features.Locations.Queries.GetAll
+@using Telerik.Blazor.Components
+
+@attribute [Authorize(Policy = Permissions.Encounters.View)]
+@inject IStringLocalizer<Encounters> L
+@inject IValidationService Validator
+
+<PageTitle>@Title</PageTitle>
+
+<MudStack Spacing="0" Class="flex-grow-1">
+    <MudStack Row Spacing="2" Class="align-center mb-2">
+        <MudIcon Icon="@Icons.Material.Filled.MedicalServices" Size="Size.Large" />
+        <MudText Typo="Typo.h6">@L[_currentDto.GetClassDescription()]</MudText>
+        <MudSpacer />
+        <MudButton Disabled="@_loading"
+                   OnClick="@(() => OnRefresh())"
+                   StartIcon="@Icons.Material.Outlined.Refresh"
+                   Variant="Variant.Outlined">
+            @ConstantString.Refresh
+        </MudButton>
+        @if (_canCreate)
+        {
+            <MudButton StartIcon="@Icons.Material.Outlined.Add"
+                       OnClick="OnCreate"
+                       Color="Color.Primary"
+                       Variant="Variant.Filled">
+                @ConstantString.New
+            </MudButton>
+        }
+        @if (_canDelete && _selectedItems.Any())
+        {
+            <MudButton StartIcon="@Icons.Material.Outlined.Delete"
+                       OnClick="OnDeleteChecked"
+                       Color="Color.Error"
+                       Variant="Variant.Filled">
+                @ConstantString.Delete (@_selectedItems.Count())
+            </MudButton>
+        }
+    </MudStack>
+
+    <TelerikGrid Data="@_items"
+                 Pageable="true"
+                 PageSize="20"
+                 Sortable="true"
+                 FilterMode="GridFilterMode.FilterRow"
+                 SelectionMode="GridSelectionMode.Multiple"
+                 @bind-SelectedItems="_selectedItems"
+                 Height="calc(100vh - 280px)">
+        <GridColumns>
+            <GridCheckboxColumn SelectAll="true" Width="60px" />
+            <GridColumn Field="@nameof(EncounterDto.EncounterNumber)" Title="@L["Encounter #"]" Width="150px" />
+            <GridColumn Field="@nameof(EncounterDto.VisitId)" Title="@L["Visit ID"]" Width="100px" />
+            <GridColumn Field="@nameof(EncounterDto.EncounterType)" Title="@L["Type"]" Width="150px" />
+            <GridColumn Field="@nameof(EncounterDto.EncounterStatus)" Title="@L["Status"]" Width="130px">
+                <Template>
+                    @{
+                        var enc = (EncounterDto)context;
+                        <MudChip T="string" Size="Size.Small" Color="@GetEncounterStatusColor(enc.EncounterStatus)">
+                            @enc.EncounterStatus
+                        </MudChip>
+                    }
+                </Template>
+            </GridColumn>
+            <GridColumn Field="@nameof(EncounterDto.StartDate)" Title="@L["Start Date"]" Width="160px">
+                <Template>
+                    @{
+                        var enc = (EncounterDto)context;
+                        @enc.StartDate.ToString("dd/MM/yyyy HH:mm")
+                    }
+                </Template>
+            </GridColumn>
+            <GridColumn Field="@nameof(EncounterDto.EndDate)" Title="@L["End Date"]" Width="160px">
+                <Template>
+                    @{
+                        var enc = (EncounterDto)context;
+                        @(enc.EndDate?.ToString("dd/MM/yyyy HH:mm") ?? "-")
+                    }
+                </Template>
+            </GridColumn>
+            <GridColumn Width="120px" Title="@ConstantString.Actions" Sortable="false" Filterable="false">
+                <Template>
+                    @{
+                        var enc = (EncounterDto)context;
+                        <MudStack Row Spacing="1">
+                            @if (_canEnd && enc.EncounterStatus == "InProgress")
+                            {
+                                <MudIconButton Icon="@Icons.Material.Filled.CheckCircle"
+                                               Size="Size.Small"
+                                               Color="Color.Success"
+                                               OnClick="@(() => OnEndEncounter(enc))" />
+                            }
+                            @if (_canDelete)
+                            {
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                               Size="Size.Small"
+                                               Color="Color.Error"
+                                               OnClick="@(() => OnDelete(enc))" />
+                            }
+                        </MudStack>
+                    }
+                </Template>
+            </GridColumn>
+        </GridColumns>
+    </TelerikGrid>
+</MudStack>
+
+<TelerikWindow @bind-Visible="_formVisible"
+               Modal="true"
+               Width="900px">
+    <WindowTitle>@_formTitle</WindowTitle>
+    <WindowContent>
+        @if (_editModel is not null)
+        {
+            <MudForm @ref="_form" Model="@_editModel" Validation="@(Validator.ValidateValue(_editModel))">
+                <MudGrid Spacing="3" Class="pa-2">
+                    <MudItem xs="12" sm="6">
+                        <MudSelect T="int"
+                                   Label="@L["Visit"]"
+                                   @bind- Value="_editModel.VisitId"
+                                   Required="true"
+                                   Variant="Variant.Outlined"
+                                   AnchorOrigin="Origin.BottomCenter">
+                            @foreach (var visit in _visits)
+                            {
+                                <MudSelectItem T="int" Value="@visit.Id">Visit #@visit.Id</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <PicklistAutocomplete Picklist="Picklist.EncounterType"
+                                              T="string"
+                                              Label="@L["Encounter Type"]"
+                                              @bind-Value="_editModel.EncounterType"
+                                              Required="true"
+                                              Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudSelect T="int?"
+                                   Label="@L["Doctor"]"
+                                   @bind-Value="_editModel.DoctorId"
+                                   Clearable="true"
+                                   Variant="Variant.Outlined"
+                                   AnchorOrigin="Origin.BottomCenter">
+                            @foreach (var staff in _doctors)
+                            {
+                                <MudSelectItem T="int?" Value="@((int?)staff.Id)">@staff.FirstName @staff.LastName</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudSelect T="int?"
+                                   Label="@L["Department"]"
+                                   @bind-Value="_editModel.DepartmentId"
+                                   Clearable="true"
+                                   Variant="Variant.Outlined"
+                                   AnchorOrigin="Origin.BottomCenter">
+                            @foreach (var dept in _departments)
+                            {
+                                <MudSelectItem T="int?" Value="@((int?)dept.Id)">@dept.Name</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudSelect T="int?"
+                                   Label="@L["Location"]"
+                                   @bind-Value="_editModel.LocationId"
+                                   Clearable="true"
+                                   Variant="Variant.Outlined"
+                                   AnchorOrigin="Origin.BottomCenter">
+                            @foreach (var loc in _locations)
+                            {
+                                <MudSelectItem T="int?" Value="@((int?)loc.Id)">@loc.Name</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField Label="@L["Chief Complaint"]"
+                                      @bind-Value="_editModel.ChiefComplaint"
+                                      Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="12">
+                        <MudTextField Label="@L["Notes"]"
+                                      @bind-Value="_editModel.Notes"
+                                      Variant="Variant.Outlined"
+                                      Lines="3" />
+                    </MudItem>
+                </MudGrid>
+            </MudForm>
+
+            <MudStack Row Spacing="2" Justify="Justify.FlexEnd" Class="pa-2 mt-2">
+                <MudButton Variant="Variant.Text"
+                           Color="Color.Default"
+                           OnClick="CloseForm">
+                    @ConstantString.Cancel
+                </MudButton>
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           OnClick="SaveForm">
+                    @ConstantString.Save
+                </MudButton>
+            </MudStack>
+        }
+    </WindowContent>
+</TelerikWindow>
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState> AuthState { get; set; } = default!;
+    [CascadingParameter] private UserProfile? UserProfile { get; set; }
+    public string? Title { get; private set; }
+    private IEnumerable<EncounterDto> _selectedItems = new List<EncounterDto>();
+    private EncounterDto _currentDto = new();
+    private bool _loading;
+    private List<EncounterDto> _items = new();
+    private bool _canCreate;
+    private bool _canDelete;
+    private bool _canEnd;
+
+    // Form state
+    private bool _formVisible = false;
+    private string _formTitle = string.Empty;
+    private StartEncounterCommand? _editModel;
+    private MudForm? _form;
+    private List<VisitDto> _visits = new();
+    private List<StaffDto> _doctors = new();
+    private List<DepartmentDto> _departments = new();
+    private List<LocationDto> _locations = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        Title = L[_currentDto.GetClassDescription()];
+        var state = await AuthState;
+        _canCreate = (await AuthService.AuthorizeAsync(state.User, Permissions.Encounters.Create)).Succeeded;
+        _canDelete = (await AuthService.AuthorizeAsync(state.User, Permissions.Encounters.Delete)).Succeeded;
+        _canEnd = (await AuthService.AuthorizeAsync(state.User, Permissions.Encounters.Edit)).Succeeded;
+        await LoadData();
+        await LoadLookupData();
+    }
+
+    private async Task LoadData()
+    {
+        _loading = true;
+        try
+        {
+            var result = await Mediator.Send(new GetAllEncountersQuery());
+            _items = result.ToList();
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task LoadLookupData()
+    {
+        _visits = (await Mediator.Send(new GetAllVisitsQuery())).ToList();
+        _doctors = (await Mediator.Send(new GetAllStaffQuery())).Where(x => x.StaffType == "Doctor").ToList();
+        _departments = (await Mediator.Send(new GetAllDepartmentsQuery())).ToList();
+        _locations = (await Mediator.Send(new GetAllLocationsQuery())).ToList();
+    }
+
+    private Color GetEncounterStatusColor(string status) => status switch
+    {
+        "Planned" => Color.Default,
+        "InProgress" => Color.Primary,
+        "Completed" => Color.Success,
+        "Cancelled" => Color.Warning,
+        _ => Color.Default
+    };
+
+    private async Task OnRefresh()
+    {
+        EncounterCacheKey.Refresh();
+        _selectedItems = new List<EncounterDto>();
+        await LoadData();
+    }
+
+    private void OnCreate()
+    {
+        _editModel = new StartEncounterCommand();
+        _formTitle = string.Format(ConstantString.CreateAnItem, L["Encounter"]);
+        _formVisible = true;
+    }
+
+    private void CloseForm()
+    {
+        _formVisible = false;
+        _editModel = null;
+    }
+
+    private async Task SaveForm()
+    {
+        if (_form != null)
+        {
+            await _form.Validate();
+            if (_form.IsValid && _editModel != null)
+            {
+                var result = await Mediator.Send(_editModel);
+                if (result.Succeeded)
+                {
+                    Snackbar.Add(ConstantString.SaveSuccess, Severity.Success);
+                    CloseForm();
+                    await LoadData();
+                    _selectedItems = new List<EncounterDto>();
+                }
+                else
+                {
+                    Snackbar.Add(result.ErrorMessage, Severity.Error);
+                }
+            }
+        }
+    }
+
+    private async Task OnEndEncounter(EncounterDto dto)
+    {
+        var contentText = string.Format(L["Are you sure you want to end encounter {0}?"], dto.EncounterNumber);
+        var command = new EndEncounterCommand { EncounterId = dto.Id };
+        await DialogServiceHelper.ShowDeleteConfirmationDialogAsync(command, L["End Encounter"], contentText, async () =>
+        {
+            await InvokeAsync(async () =>
+            {
+                await LoadData();
+                _selectedItems = new List<EncounterDto>();
+            });
+        });
+    }
+
+    private async Task OnDelete(EncounterDto dto)
+    {
+        var contentText = string.Format(ConstantString.DeleteConfirmation, dto.EncounterNumber);
+        var command = new DeleteEncounterCommand(new[] { dto.Id });
+        await DialogServiceHelper.ShowDeleteConfirmationDialogAsync(command, ConstantString.DeleteConfirmationTitle, contentText, async () =>
+        {
+            await InvokeAsync(async () =>
+            {
+                await LoadData();
+                _selectedItems = new List<EncounterDto>();
+            });
+        });
+    }
+
+    private async Task OnDeleteChecked()
+    {
+        var contentText = string.Format(ConstantString.DeleteConfirmWithSelected, _selectedItems.Count());
+        var command = new DeleteEncounterCommand(_selectedItems.Select(x => x.Id).ToArray());
+        await DialogServiceHelper.ShowDeleteConfirmationDialogAsync(command, ConstantString.DeleteConfirmationTitle, contentText, async () =>
+        {
+            await InvokeAsync(async () =>
+            {
+                await LoadData();
+                _selectedItems = new List<EncounterDto>();
+            });
+        });
+    }
+}

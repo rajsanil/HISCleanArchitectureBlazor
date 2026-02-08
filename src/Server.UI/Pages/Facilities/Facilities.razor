@@ -1,0 +1,228 @@
+@page "/pages/facilities"
+@using CleanArchitecture.Blazor.Application.Features.Facilities.DTOs
+@using CleanArchitecture.Blazor.Application.Features.Facilities.Mappers
+@using CleanArchitecture.Blazor.Application.Features.Facilities.Queries.GetAll
+@using CleanArchitecture.Blazor.Application.Features.Facilities.Caching
+@using CleanArchitecture.Blazor.Application.Features.Facilities.Commands.AddEdit
+@using CleanArchitecture.Blazor.Application.Features.Facilities.Commands.Delete
+@using CleanArchitecture.Blazor.Server.UI.Pages.Facilities.Components
+
+@attribute [Authorize(Policy = Permissions.Facilities.View)]
+@inject IStringLocalizer<Facilities> L
+
+<PageTitle>@Title</PageTitle>
+
+<MudDataGrid Items="@_items"
+             FixedHeader="true"
+             FixedFooter="true"
+             @bind-RowsPerPage="_defaultPageSize"
+             Height="calc(100vh - 330px)"
+             Loading="@_loading"
+             MultiSelection="true"
+             @bind-SelectedItems="_selectedItems"
+             @bind-SelectedItem="_currentDto"
+             Hover="true" @ref="_table">
+    <ToolBarContent>
+        <MudStack Row Spacing="0" Class="flex-grow-1" Justify="Justify.SpaceBetween">
+            <MudStack Row AlignItems="AlignItems.Start">
+                <MudIcon Icon="@Icons.Material.Filled.LocalHospital" Size="Size.Large" />
+                <MudStack Spacing="0">
+                    <MudText Typo="Typo.subtitle2" Class="mb-2">@L[_currentDto.GetClassDescription()]</MudText>
+                </MudStack>
+            </MudStack>
+            <MudStack Spacing="0" AlignItems="AlignItems.End">
+                <MudToolBar Dense WrapContent="true" Class="py-1 px-0">
+                    <MudButton 
+                               Disabled="@_loading"
+                               OnClick="@(() => OnRefresh())"
+                               StartIcon="@Icons.Material.Outlined.Refresh">
+                        @ConstantString.Refresh
+                    </MudButton>
+                    @if (_canCreate)
+                    {
+                        <MudButton  
+                                   StartIcon="@Icons.Material.Outlined.Add"
+                                   OnClick="OnCreate">
+                            @ConstantString.New
+                        </MudButton>
+                    }
+                    <MudMenu TransformOrigin="Origin.BottomRight" AnchorOrigin="Origin.BottomRight" EndIcon="@Icons.Material.Filled.MoreVert" Label="@ConstantString.More">
+                        @if (_canCreate)
+                        {
+                            <MudMenuItem Disabled="@(_selectedItems.Count != 1)" OnClick="OnClone">@ConstantString.Clone</MudMenuItem>
+                        }
+                        @if (_canDelete)
+                        {
+                            <MudMenuItem Disabled="@(!(_selectedItems.Count > 0))"
+                                         OnClick="OnDeleteChecked">
+                                @ConstantString.Delete
+                            </MudMenuItem>
+                        }
+                    </MudMenu>
+                </MudToolBar>
+                <MudStack Row Spacing="1">
+                    @if (_canSearch)
+                    {
+                        <MudTextField T="string" Value="@_searchString" ValueChanged="@(OnSearch)" Placeholder="@ConstantString.Search" Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0"></MudTextField>
+                    }
+                </MudStack>
+            </MudStack>
+        </MudStack>
+    </ToolBarContent>
+    <Columns>
+        <SelectColumn ShowInFooter="false" />
+        <TemplateColumn HeaderStyle="width:60px" Title="@ConstantString.Actions" Sortable="false">
+            <CellTemplate>
+                <MudMenu Icon="@Icons.Material.Filled.Edit" Variant="Variant.Filled" Size="Size.Small" Dense="true" IconColor="Color.Info" AnchorOrigin="Origin.CenterLeft">
+                    @if (_canEdit)
+                    {
+                        <MudMenuItem OnClick="@(() => OnEdit(context.Item))">@ConstantString.Edit</MudMenuItem>
+                    }
+                    @if (_canDelete)
+                    {
+                        <MudMenuItem OnClick="@(() => OnDelete(context.Item))">@ConstantString.Delete</MudMenuItem>
+                    }
+                </MudMenu>
+            </CellTemplate>
+        </TemplateColumn>
+        <PropertyColumn Property="x => x.Code" Title="@L[_currentDto.GetMemberDescription(x => x.Code)]" />
+        <PropertyColumn Property="x => x.Name" Title="@L[_currentDto.GetMemberDescription(x => x.Name)]" />
+        <PropertyColumn Property="x => x.NameArabic" Title="@L[_currentDto.GetMemberDescription(x => x.NameArabic)]" />
+        <PropertyColumn Property="x => x.LicenseNumber" Title="@L[_currentDto.GetMemberDescription(x => x.LicenseNumber)]" />
+        <PropertyColumn Property="x => x.Phone" Title="@L[_currentDto.GetMemberDescription(x => x.Phone)]" />
+        <PropertyColumn Property="x => x.Email" Title="@L[_currentDto.GetMemberDescription(x => x.Email)]" />
+    </Columns>
+    <NoRecordsContent>
+        <MudDataGirdStatus Icon="@Icons.Material.Outlined.Inbox" Text="@ConstantString.NoRecords" />
+    </NoRecordsContent>
+    <LoadingContent>
+        <MudDataGirdStatus IsLoading="true" Text="@ConstantString.Loading" />
+    </LoadingContent>
+    <PagerContent>
+        <MudDataGridPager PageSizeOptions="@(new[] { 10, 15, 30, 50, 100 })" />
+    </PagerContent>
+</MudDataGrid>
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState> AuthState { get; set; } = default!;
+    [CascadingParameter] private UserProfile? UserProfile { get; set; }
+    public string? Title { get; private set; }
+    private HashSet<FacilityDto> _selectedItems = new();
+    private MudDataGrid<FacilityDto> _table = default!;
+    private FacilityDto _currentDto = new();
+    private bool _loading;
+    private int _defaultPageSize = 15;
+    private List<FacilityDto> _items = new();
+    private string _searchString = string.Empty;
+    private bool _canSearch;
+    private bool _canCreate;
+    private bool _canEdit;
+    private bool _canDelete;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Title = L[_currentDto.GetClassDescription()];
+        var state = await AuthState;
+        _canCreate = (await AuthService.AuthorizeAsync(state.User, Permissions.Facilities.Create)).Succeeded;
+        _canSearch = (await AuthService.AuthorizeAsync(state.User, Permissions.Facilities.Search)).Succeeded;
+        _canEdit = (await AuthService.AuthorizeAsync(state.User, Permissions.Facilities.Edit)).Succeeded;
+        _canDelete = (await AuthService.AuthorizeAsync(state.User, Permissions.Facilities.Delete)).Succeeded;
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        _loading = true;
+        try
+        {
+            var result = await Mediator.Send(new GetAllFacilitiesQuery());
+            _items = result.Where(x => string.IsNullOrEmpty(_searchString) || 
+                                      x.Name.Contains(_searchString, StringComparison.OrdinalIgnoreCase) || 
+                                      x.Code.Contains(_searchString, StringComparison.OrdinalIgnoreCase)).ToList();
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task OnSearch(string text)
+    {
+        _searchString = text;
+        await LoadData();
+    }
+
+    private async Task OnRefresh()
+    {
+        FacilityCacheKey.Refresh();
+        _selectedItems = new HashSet<FacilityDto>();
+        _searchString = string.Empty;
+        await LoadData();
+    }
+
+    private async Task ShowEditFormDialog(string title, AddEditFacilityCommand command)
+    {
+        var parameters = new DialogParameters<FacilityFormDialog>
+        {
+            { x => x.Refresh, async () => await LoadData() },
+            { x => x.Model, command }
+        };
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<FacilityFormDialog>(title, parameters, options);
+        var state = await dialog.Result;
+
+        if (state is not null && !state.Canceled)
+        {
+            await LoadData();
+            _selectedItems.Clear();
+        }
+    }
+
+    private async Task OnCreate()
+    {
+        var command = new AddEditFacilityCommand();
+        await ShowEditFormDialog(string.Format(ConstantString.CreateAnItem, L["Facility"]), command);
+    }
+
+    private async Task OnClone()
+    {
+        var copy = _selectedItems.First();
+        var command = FacilityMapper.CloneFromDto(copy);
+        await ShowEditFormDialog(string.Format(ConstantString.CreateAnItem, L["Facility"]), command);
+    }
+
+    private async Task OnEdit(FacilityDto dto)
+    {
+        var command = FacilityMapper.ToEditCommand(dto);
+        await ShowEditFormDialog(string.Format(ConstantString.EditTheItem, L["Facility"]), command);
+    }
+
+    private async Task OnDelete(FacilityDto dto)
+    {
+        var contentText = string.Format(ConstantString.DeleteConfirmation, dto.Name);
+        var command = new DeleteFacilityCommand(new[] { dto.Id });
+        await DialogServiceHelper.ShowDeleteConfirmationDialogAsync(command, ConstantString.DeleteConfirmationTitle, contentText, async () =>
+        {
+            await InvokeAsync(async () =>
+            {
+                await LoadData();
+                _selectedItems.Clear();
+            });
+        });
+    }
+
+    private async Task OnDeleteChecked()
+    {
+        var contentText = string.Format(ConstantString.DeleteConfirmWithSelected, _selectedItems.Count);
+        var command = new DeleteFacilityCommand(_selectedItems.Select(x => x.Id).ToArray());
+        await DialogServiceHelper.ShowDeleteConfirmationDialogAsync(command, ConstantString.DeleteConfirmationTitle, contentText, async () =>
+        {
+            await InvokeAsync(async () =>
+            {
+                await LoadData();
+                _selectedItems.Clear();
+            });
+        });
+    }
+}

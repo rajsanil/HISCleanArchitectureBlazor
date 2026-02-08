@@ -82,6 +82,150 @@ public class MenuService : IMenuService
         },
         new MenuSectionModel
         {
+            Title = "Hospital",
+            Roles = new[] { RoleName.Admin, RoleName.Users },
+            SectionItems = new List<MenuSectionItemModel>
+            {
+                new()
+                {
+                    IsParent = true,
+                    Title = "Foundation",
+                    Icon = Icons.Material.Filled.Business,
+                    PageStatus = PageStatus.Completed,
+                    MenuItems = new List<MenuSectionSubItemModel>
+                    {
+                        new()
+                        {
+                            Title = "Facilities",
+                            Href = "/pages/facilities",
+                            PageStatus = PageStatus.Completed
+                        },
+                        new()
+                        {
+                            Title = "Departments",
+                            Href = "/pages/departments",
+                            PageStatus = PageStatus.Completed
+                        },
+                        new()
+                        {
+                            Title = "Specialties",
+                            Href = "/pages/specialties",
+                            PageStatus = PageStatus.Completed
+                        },
+                        new()
+                        {
+                            Title = "Locations",
+                            Href = "/pages/locations",
+                            PageStatus = PageStatus.Completed
+                        },
+                        new()
+                        {
+                            Title = "Rooms",
+                            Href = "/pages/rooms",
+                            PageStatus = PageStatus.Completed
+                        },
+                        new()
+                        {
+                            Title = "Beds",
+                            Href = "/pages/beds",
+                            PageStatus = PageStatus.Completed
+                        },
+                        new()
+                        {
+                            Title = "Staff",
+                            Href = "/pages/staff",
+                            PageStatus = PageStatus.Completed
+                        }
+                    }
+                },
+                new()
+                {
+                    IsParent = true,
+                    Title = "Patient Management",
+                    Icon = Icons.Material.Filled.People,
+                    PageStatus = PageStatus.Completed,
+                    MenuItems = new List<MenuSectionSubItemModel>
+                    {
+                        new()
+                        {
+                            Title = "Patients",
+                            Href = "/pages/patients",
+                            PageStatus = PageStatus.Completed
+                        },
+                        new()
+                        {
+                            Title = "Visits",
+                            Href = "/pages/visits",
+                            PageStatus = PageStatus.Completed
+                        }
+                    }
+                },
+                new()
+                {
+                    IsParent = true,
+                    Title = "Clinical",
+                    Icon = Icons.Material.Filled.MedicalServices,
+                    PageStatus = PageStatus.Completed,
+                    MenuItems = new List<MenuSectionSubItemModel>
+                    {
+                        new()
+                        {
+                            Title = "Encounters",
+                            Href = "/pages/encounters",
+                            PageStatus = PageStatus.Completed
+                        },
+                        new()
+                        {
+                            Title = "Bed Board",
+                            Href = "/pages/bedboard",
+                            PageStatus = PageStatus.Completed
+                        }
+                    }
+                },
+                new()
+                {
+                    IsParent = true,
+                    Title = "Master Data",
+                    Icon = Icons.Material.Filled.Dataset,
+                    PageStatus = PageStatus.Completed,
+                    MenuItems = new List<MenuSectionSubItemModel>
+                    {
+                        new()
+                        {
+                            Title = "Countries",
+                            Href = "/pages/countries",
+                            PageStatus = PageStatus.Completed
+                        },
+                        new()
+                        {
+                            Title = "Cities",
+                            Href = "/pages/cities",
+                            PageStatus = PageStatus.Completed
+                        },
+                        new()
+                        {
+                            Title = "Nationalities",
+                            Href = "/pages/nationalities",
+                            PageStatus = PageStatus.Completed
+                        },
+                        new()
+                        {
+                            Title = "Blood Groups",
+                            Href = "/pages/bloodgroups",
+                            PageStatus = PageStatus.Completed
+                        },
+                        new()
+                        {
+                            Title = "Marital Statuses",
+                            Href = "/pages/maritalstatuses",
+                            PageStatus = PageStatus.Completed
+                        }
+                    }
+                }
+            }
+        },
+        new MenuSectionModel
+        {
             Title = "MANAGEMENT",
             Roles = new[] { RoleName.Admin },
             SectionItems = new List<MenuSectionItemModel>

@@ -1,0 +1,366 @@
+@page "/pages/patients/new"
+@page "/pages/patients/edit/{Id:int}"
+@using CleanArchitecture.Blazor.Application.Features.Patients.DTOs
+@using CleanArchitecture.Blazor.Application.Features.Patients.Mappers
+@using CleanArchitecture.Blazor.Application.Features.Patients.Queries.GetAll
+@using CleanArchitecture.Blazor.Application.Features.Patients.Commands.AddEdit
+@using CleanArchitecture.Blazor.Application.Features.BloodGroups.DTOs
+@using CleanArchitecture.Blazor.Application.Features.BloodGroups.Queries.GetAll
+@using CleanArchitecture.Blazor.Application.Features.Countries.DTOs
+@using CleanArchitecture.Blazor.Application.Features.Countries.Queries.GetAll
+@using CleanArchitecture.Blazor.Application.Features.Cities.DTOs
+@using CleanArchitecture.Blazor.Application.Features.Cities.Queries.GetAll
+@using CleanArchitecture.Blazor.Application.Features.Nationalities.DTOs
+@using CleanArchitecture.Blazor.Application.Features.Nationalities.Queries.GetAll
+@using CleanArchitecture.Blazor.Application.Features.MaritalStatuses.DTOs
+@using CleanArchitecture.Blazor.Application.Features.MaritalStatuses.Queries.GetAll
+
+@attribute [Authorize(Policy = Permissions.Patients.View)]
+@inject IStringLocalizer<Patients> L
+
+<PageTitle>@(Id.HasValue ? "Edit Patient" : "New Patient")</PageTitle>
+
+<MudPaper Elevation="0" Class="pa-4">
+    @* ── Header ── *@
+    <MudStack Row Spacing="2" Class="mb-4" AlignItems="AlignItems.Center">
+        <MudIconButton Icon="@Icons.Material.Filled.ArrowBack"
+                       Color="Color.Default"
+                       OnClick="NavigateBack"
+                       Size="Size.Large" />
+        <MudIcon Icon="@Icons.Material.Filled.People" Size="Size.Large" Color="Color.Primary" />
+        <MudStack Spacing="0">
+            <MudText Typo="Typo.h5">@(Id.HasValue ? L["Edit Patient"] : L["New Patient"])</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                @(Id.HasValue ? L["Update patient information"] : L["Register a new patient"])
+            </MudText>
+        </MudStack>
+    </MudStack>
+
+    @if (Model == null)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+        <MudText Class="mt-2">Loading patient form...</MudText>
+    }
+    else
+    {
+        <MudForm Model="@Model" @ref="@_form" Validation="@(Validator.ValidateValue(Model))">
+            <MudGrid Spacing="3">
+                <MudItem xs="12">
+                    <MudText Typo="Typo.subtitle2" Color="Color.Primary" Class="mb-2">
+                        <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" Class="mr-1" />
+                        @L["Personal Information"]
+                    </MudText>
+                    <MudDivider />
+                </MudItem>
+                <MudItem xs="12" sm="4">
+                    <MudTextField Label="@L["First Name"]" @bind-Value="Model.FirstName" For="@(() => Model.FirstName)" Required="true" Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" sm="4">
+                    <MudTextField Label="@L["Middle Name"]" @bind-Value="Model.MiddleName" For="@(() => Model.MiddleName)" Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" sm="4">
+                    <MudTextField Label="@L["Last Name"]" @bind-Value="Model.LastName" For="@(() => Model.LastName)" Required="true" Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField Label="@L["First Name (Arabic)"]" @bind-Value="Model.FirstNameArabic" For="@(() => Model.FirstNameArabic)" Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField Label="@L["Last Name (Arabic)"]" @bind-Value="Model.LastNameArabic" For="@(() => Model.LastNameArabic)" Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" sm="4">
+                    <MudText Typo="Typo.caption" Class="mb-1">@L["Date of Birth"]</MudText>
+                    <TelerikDatePicker @bind-Value="Model.DateOfBirth"
+                                       Format="dd/MM/yyyy"
+                                       Width="100%" />
+                </MudItem>
+                <MudItem xs="12" sm="4">
+                    <MudText Typo="Typo.caption" Class="mb-1">@L["Gender"]</MudText>
+                    <TelerikDropDownList Data="@_genderOptions"
+                                         @bind-Value="Model.Gender"
+                                         DefaultText="@L["Select Gender"]"
+                                         Width="100%" />
+                </MudItem>
+                <MudItem xs="12" sm="4">
+                    <MudText Typo="Typo.caption" Class="mb-1">@L["Blood Group"]</MudText>
+                    <TelerikDropDownList Data="@_bloodGroups"
+                                         @bind-Value="Model.BloodGroupId"
+                                         TextField="Name"
+                                         ValueField="Id"
+                                         DefaultText="@L["Select Blood Group"]"
+                                         Width="100%" />
+                </MudItem>
+                <MudItem xs="12" sm="4">
+                    <MudText Typo="Typo.caption" Class="mb-1">@L["Marital Status"]</MudText>
+                    <TelerikDropDownList Data="@_maritalStatuses"
+                                         @bind-Value="Model.MaritalStatusId"
+                                         TextField="Name"
+                                         ValueField="Id"
+                                         DefaultText="@L["Select Marital Status"]"
+                                         Width="100%" />
+                </MudItem>
+                <MudItem xs="12" sm="4">
+                    <MudText Typo="Typo.caption" Class="mb-1">@L["Nationality"]</MudText>
+                    <TelerikDropDownList Data="@_nationalities"
+                                         @bind-Value="Model.NationalityId"
+                                         TextField="Name"
+                                         ValueField="Id"
+                                         DefaultText="@L["Select Nationality"]"
+                                         Width="100%" />
+                </MudItem>
+                <MudItem xs="12" sm="4">
+                    <MudCheckBox T="bool" Label="@L["Is VIP"]" @bind-Value="Model.IsVIP" For="@(() => Model.IsVIP)" Color="Color.Warning" />
+                </MudItem>
+
+                <MudItem xs="12" Class="mt-4">
+                    <MudText Typo="Typo.subtitle2" Color="Color.Primary" Class="mb-2">
+                        <MudIcon Icon="@Icons.Material.Filled.CardMembership" Size="Size.Small" Class="mr-1" />
+                        @L["Identity Documents"]
+                    </MudText>
+                    <MudDivider />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField Label="@L["Emirates ID"]" @bind-Value="Model.EmiratesId" For="@(() => Model.EmiratesId)" Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField Label="@L["Passport Number"]" @bind-Value="Model.PassportNumber" For="@(() => Model.PassportNumber)" Variant="Variant.Outlined" />
+                </MudItem>
+
+                <MudItem xs="12" Class="mt-4">
+                    <MudText Typo="Typo.subtitle2" Color="Color.Primary" Class="mb-2">
+                        <MudIcon Icon="@Icons.Material.Filled.ContactPhone" Size="Size.Small" Class="mr-1" />
+                        @L["Contact Information"]
+                    </MudText>
+                    <MudDivider />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField Label="@L["Phone"]" @bind-Value="Model.Phone" For="@(() => Model.Phone)" Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField Label="@L["Email"]" @bind-Value="Model.Email" For="@(() => Model.Email)" Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12">
+                    <MudTextField Label="@L["Address"]" @bind-Value="Model.Address" For="@(() => Model.Address)" Lines="2" Variant="Variant.Outlined" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudText Typo="Typo.caption" Class="mb-1">@L["Country"]</MudText>
+                    <TelerikDropDownList Data="@_countries"
+                                         Value="Model.CountryId"
+                                         ValueChanged="@((int? value) => OnCountryChanged(value))"
+                                         TextField="Name"
+                                         ValueField="Id"
+                                         DefaultText="@L["Select Country"]"
+                                         Width="100%" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudText Typo="Typo.caption" Class="mb-1">@L["City"]</MudText>
+                    <TelerikDropDownList Data="@_filteredCities"
+                                         @bind-Value="Model.CityId"
+                                         TextField="Name"
+                                         ValueField="Id"
+                                         DefaultText="@L["Select City"]"
+                                         Enabled="@(Model.CountryId != null)"
+                                         Width="100%" />
+                </MudItem>
+
+                <MudItem xs="12" Class="mt-4">
+                    <MudText Typo="Typo.subtitle2" Color="Color.Primary" Class="mb-2">
+                        <MudIcon Icon="@Icons.Material.Filled.Badge" Size="Size.Small" Class="mr-1" />
+                        @L["Medical Record Number"]
+                    </MudText>
+                    <MudDivider />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField Label="@L["MRN"]" @bind-Value="Model.MRN" For="@(() => Model.MRN)" 
+                                  ReadOnly="@(Model.Id > 0)" Disabled="@(Model.Id > 0)" Variant="Variant.Outlined" 
+                                  HelperText="@L["Auto-generated on save"]" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudCheckBox T="bool" Label="@L["Is Active"]" @bind-Value="Model.IsActive" For="@(() => Model.IsActive)" Color="Color.Primary" />
+                </MudItem>
+
+                <MudItem xs="12" Class="mt-4">
+                    <MudDivider />
+                </MudItem>
+                <MudItem xs="12">
+                    <MudStack Row Spacing="2" Justify="Justify.FlexEnd">
+                        <MudButton Variant="Variant.Text"
+                                   Color="Color.Default"
+                                   OnClick="NavigateBack">
+                            @ConstantString.Cancel
+                        </MudButton>
+                        <MudLoadingButton Variant="Variant.Outlined"
+                                          Color="Color.Primary"
+                                          Loading="@_savingNew"
+                                          OnClick="SaveAndNew"
+                                          Disabled="@(Id.HasValue)">
+                            @ConstantString.SaveAndNew
+                        </MudLoadingButton>
+                        <MudLoadingButton Variant="Variant.Filled"
+                                          Color="Color.Primary"
+                                          Loading="@_saving"
+                                          OnClick="Submit">
+                            @ConstantString.Save
+                        </MudLoadingButton>
+                    </MudStack>
+                </MudItem>
+            </MudGrid>
+        </MudForm>
+    }
+</MudPaper>
+
+@code {
+    [Parameter] public int? Id { get; set; }
+
+    private AddEditPatientCommand? Model;
+    private MudForm? _form;
+    private bool _saving;
+    private bool _savingNew;
+
+    private IEnumerable<BloodGroupDto> _bloodGroups = new List<BloodGroupDto>();
+    private IEnumerable<MaritalStatusDto> _maritalStatuses = new List<MaritalStatusDto>();
+    private IEnumerable<NationalityDto> _nationalities = new List<NationalityDto>();
+    private IEnumerable<CityDto> _cities = new List<CityDto>();
+    private IEnumerable<CountryDto> _countries = new List<CountryDto>();
+    private IEnumerable<CityDto> _filteredCities => Model?.CountryId != null
+        ? _cities.Where(c => c.CountryId == Model.CountryId.Value)
+        : Enumerable.Empty<CityDto>();
+    private List<string> _genderOptions = new() { "Male", "Female" };
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // Initialize model first
+            if (!Id.HasValue)
+            {
+                Model = new AddEditPatientCommand
+                {
+                    DateOfBirth = DateTime.Today.AddYears(-30),
+                    IsActive = true
+                };
+            }
+
+            // Load lookup data
+            _bloodGroups = await Mediator.Send(new GetAllBloodGroupsQuery());
+            _maritalStatuses = await Mediator.Send(new GetAllMaritalStatusesQuery());
+            _nationalities = await Mediator.Send(new GetAllNationalitiesQuery());
+            _cities = await Mediator.Send(new GetAllCitiesQuery());
+            _countries = await Mediator.Send(new GetAllCountriesQuery());
+
+            // Load patient for edit mode
+            if (Id.HasValue)
+            {
+                var allPatients = await Mediator.Send(new GetAllPatientsQuery());
+                var patient = allPatients.FirstOrDefault(p => p.Id == Id.Value);
+                if (patient != null)
+                {
+                    Model = PatientMapper.ToEditCommand(patient);
+                }
+                else
+                {
+                    Snackbar.Add(L["Patient not found"], Severity.Error);
+                    NavigateBack();
+                    return;
+                }
+            }
+
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+            // Set Model anyway so form shows
+            Model = new AddEditPatientCommand
+            {
+                DateOfBirth = DateTime.Today.AddYears(-30),
+                IsActive = true
+            };
+        }
+    }
+
+    private void OnCountryChanged(int? countryId)
+    {
+        if (Model == null) return;
+        
+        Model.CountryId = countryId;
+        if (Model.CityId.HasValue)
+        {
+            var city = _cities.FirstOrDefault(c => c.Id == Model.CityId.Value);
+            if (city?.CountryId != countryId)
+            {
+                Model.CityId = null;
+            }
+        }
+    }
+
+    private async Task Submit()
+    {
+        if (Model == null) return;
+        
+        _saving = true;
+        try
+        {
+            await _form!.Validate().ConfigureAwait(false);
+            if (!_form!.IsValid) return;
+            
+            var result = await Mediator.Send(Model);
+            result.Match(
+                data =>
+                {
+                    Snackbar.Add(ConstantString.SaveSuccess, Severity.Info);
+                    NavigateBack();
+                    return data;
+                },
+                errors =>
+                {
+                    Snackbar.Add(errors, Severity.Error);
+                    return 0;
+                });
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private async Task SaveAndNew()
+    {
+        if (Model == null) return;
+        
+        _savingNew = true;
+        try
+        {
+            await _form!.Validate().ConfigureAwait(false);
+            if (!_form!.IsValid) return;
+            
+            var result = await Mediator.Send(Model);
+            result.Match(
+                data =>
+                {
+                    Snackbar.Add(ConstantString.SaveSuccess, Severity.Info);
+                    // Reset for new entry
+                    Model = new AddEditPatientCommand
+                    {
+                        DateOfBirth = DateTime.Today.AddYears(-30),
+                        IsActive = true
+                    };
+                    _form?.ResetValidation();
+                    return data;
+                },
+                errors =>
+                {
+                    Snackbar.Add(errors, Severity.Error);
+                    return 0;
+                });
+        }
+        finally
+        {
+            _savingNew = false;
+        }
+    }
+
+    private void NavigateBack()
+    {
+        Navigation.NavigateTo("/pages/patients");
+    }
+}

@@ -9,6 +9,10 @@ public class TenantConfiguration : IEntityTypeConfiguration<Tenant>
 {
     public void Configure(EntityTypeBuilder<Tenant> builder)
     {
-        //builder.Ignore(e => e.DomainEvents);
+        builder.Property(x => x.Name).HasMaxLength(200);
+        builder.Property(x => x.Description).HasMaxLength(500);
+        builder.Property(x => x.ConnectionString).HasMaxLength(500);
+        builder.Property(x => x.DBProvider).HasMaxLength(50);
+        builder.Property(x => x.IsActive).HasDefaultValue(true);
     }
 }

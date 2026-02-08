@@ -1,0 +1,182 @@
+@page "/pages/bedboard"
+@using CleanArchitecture.Blazor.Application.Features.Locations.DTOs
+@using CleanArchitecture.Blazor.Application.Features.Locations.Queries.GetAll
+@using CleanArchitecture.Blazor.Application.Features.Rooms.DTOs
+@using CleanArchitecture.Blazor.Application.Features.Rooms.Queries.GetAll
+@using CleanArchitecture.Blazor.Application.Features.Beds.DTOs
+@using CleanArchitecture.Blazor.Application.Features.Beds.Queries.GetAll
+@using CleanArchitecture.Blazor.Application.Features.Beds.Caching
+
+@attribute [Authorize(Policy = Permissions.Beds.View)]
+@inject IStringLocalizer<BedBoard> L
+
+<PageTitle>@Title</PageTitle>
+
+<MudStack Spacing="2" Class="pa-4">
+    <MudStack Row Spacing="2" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+        <MudStack Row AlignItems="AlignItems.Start">
+            <MudIcon Icon="@Icons.Material.Filled.Dashboard" Size="Size.Large" />
+            <MudStack Spacing="0">
+                <MudText Typo="Typo.h5">@L["Bed Board"]</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">@L["Real-time bed occupancy dashboard"]</MudText>
+            </MudStack>
+        </MudStack>
+        <MudButton 
+                   Disabled="@_loading"
+                   OnClick="@OnRefresh"
+                   StartIcon="@Icons.Material.Outlined.Refresh"
+                   Color="Color.Primary"
+                   Variant="Variant.Filled">
+            @ConstantString.Refresh
+        </MudButton>
+    </MudStack>
+
+    @if (_loading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+    }
+
+    <MudStack Spacing="3">
+        @foreach (var location in _locations)
+        {
+            var locationRooms = _rooms.Where(r => r.LocationId == location.Id).ToList();
+            if (locationRooms.Any())
+            {
+                <MudPaper Elevation="2" Class="pa-3">
+                    <MudText Typo="Typo.h6" Class="mb-3">
+                        <MudIcon Icon="@Icons.Material.Filled.LocationOn" Size="Size.Small" Class="mr-1" />
+                        @location.Name
+                    </MudText>
+                    <MudGrid Spacing="2">
+                        @foreach (var room in locationRooms)
+                        {
+                            var roomBeds = _beds.Where(b => b.RoomId == room.Id).ToList();
+                            if (roomBeds.Any())
+                            {
+                                <MudItem xs="12" sm="6" md="4" lg="3">
+                                    <MudCard Outlined="true">
+                                        <MudCardHeader>
+                                            <CardHeaderContent>
+                                                <MudText Typo="Typo.subtitle1">
+                                                    <MudIcon Icon="@Icons.Material.Filled.MeetingRoom" Size="Size.Small" Class="mr-1" />
+                                                    @room.Name
+                                                </MudText>
+                                                <MudText Typo="Typo.caption" Color="Color.Secondary">@room.RoomType</MudText>
+                                            </CardHeaderContent>
+                                        </MudCardHeader>
+                                        <MudCardContent Class="pa-2">
+                                            <MudStack Spacing="1">
+                                                @foreach (var bed in roomBeds)
+                                                {
+                                                    <MudChip T="string"
+                                                             Size="Size.Small" 
+                                                             Color="@GetBedStatusColor(bed.BedStatus)" 
+                                                             Icon="@Icons.Material.Filled.Bed"
+                                                             Style="width: 100%;">
+                                                        @bed.Code - @bed.BedStatus
+                                                    </MudChip>
+                                                }
+                                            </MudStack>
+                                        </MudCardContent>
+                                        <MudCardActions Class="pa-2">
+                                            <MudText Typo="Typo.caption">
+                                                @roomBeds.Count(b => b.BedStatus == "Occupied") / @roomBeds.Count occupied
+                                            </MudText>
+                                        </MudCardActions>
+                                    </MudCard>
+                                </MudItem>
+                            }
+                        }
+                    </MudGrid>
+                </MudPaper>
+            }
+        }
+    </MudStack>
+
+    @if (!_loading && !_locations.Any())
+    {
+        <MudPaper Elevation="0" Class="pa-8 text-center">
+            <MudIcon Icon="@Icons.Material.Outlined.Inbox" Size="Size.Large" Color="Color.Secondary" />
+            <MudText Typo="Typo.h6" Color="Color.Secondary" Class="mt-2">@ConstantString.NoRecords</MudText>
+        </MudPaper>
+    }
+
+    <MudDivider Class="my-4" />
+
+    <MudStack Row Spacing="4" Justify="Justify.Center">
+        <MudStack Row Spacing="1" AlignItems="AlignItems.Center">
+            <MudChip T="string" Size="Size.Small" Color="Color.Success" />
+            <MudText Typo="Typo.caption">@L["Available"]</MudText>
+        </MudStack>
+        <MudStack Row Spacing="1" AlignItems="AlignItems.Center">
+            <MudChip T="string" Size="Size.Small" Color="Color.Error" />
+            <MudText Typo="Typo.caption">@L["Occupied"]</MudText>
+        </MudStack>
+        <MudStack Row Spacing="1" AlignItems="AlignItems.Center">
+            <MudChip T="string" Size="Size.Small" Color="Color.Warning" />
+            <MudText Typo="Typo.caption">@L["Cleaning"]</MudText>
+        </MudStack>
+        <MudStack Row Spacing="1" AlignItems="AlignItems.Center">
+            <MudChip T="string" Size="Size.Small" Color="Color.Default" />
+            <MudText Typo="Typo.caption">@L["Maintenance"]</MudText>
+        </MudStack>
+        <MudStack Row Spacing="1" AlignItems="AlignItems.Center">
+            <MudChip T="string" Size="Size.Small" Color="Color.Info" />
+            <MudText Typo="Typo.caption">@L["Reserved"]</MudText>
+        </MudStack>
+        <MudStack Row Spacing="1" AlignItems="AlignItems.Center">
+            <MudChip T="string" Size="Size.Small" Color="Color.Dark" />
+            <MudText Typo="Typo.caption">@L["Blocked"]</MudText>
+        </MudStack>
+    </MudStack>
+</MudStack>
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState> AuthState { get; set; } = default!;
+    [CascadingParameter] private UserProfile? UserProfile { get; set; }
+    public string? Title { get; private set; } = "Bed Board";
+    private bool _loading;
+    private IEnumerable<LocationDto> _locations = Enumerable.Empty<LocationDto>();
+    private IEnumerable<RoomDto> _rooms = Enumerable.Empty<RoomDto>();
+    private IEnumerable<BedDto> _beds = Enumerable.Empty<BedDto>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        _loading = true;
+        try
+        {
+            _locations = await Mediator.Send(new GetAllLocationsQuery());
+            _rooms = await Mediator.Send(new GetAllRoomsQuery());
+            _beds = await Mediator.Send(new GetAllBedsQuery());
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private Color GetBedStatusColor(string status)
+    {
+        return status switch
+        {
+            "Available" => Color.Success,
+            "Occupied" => Color.Error,
+            "Cleaning" => Color.Warning,
+            "Maintenance" => Color.Default,
+            "Reserved" => Color.Info,
+            "Blocked" => Color.Dark,
+            _ => Color.Default
+        };
+    }
+
+    private async Task OnRefresh()
+    {
+        BedCacheKey.Refresh();
+        await LoadData();
+    }
+}

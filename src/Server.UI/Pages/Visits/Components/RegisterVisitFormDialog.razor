@@ -1,0 +1,129 @@
+@using CleanArchitecture.Blazor.Application.Features.Visits.Commands.Register
+@using CleanArchitecture.Blazor.Application.Features.Facilities.DTOs
+@using CleanArchitecture.Blazor.Application.Features.Facilities.Queries.GetAll
+@using CleanArchitecture.Blazor.Application.Features.Departments.DTOs
+@using CleanArchitecture.Blazor.Application.Features.Departments.Queries.GetAll
+@using CleanArchitecture.Blazor.Application.Features.StaffMembers.DTOs
+@using CleanArchitecture.Blazor.Application.Features.StaffMembers.Queries.GetAll
+@using CleanArchitecture.Blazor.Domain.Common.Enums
+@inject IStringLocalizer<Visits> L
+
+<MudDialog>
+    <DialogContent>
+        <MudForm Model="@Model" @ref="@_form" Validation="@(Validator.ValidateValue(Model))">
+            <MudGrid Spacing="2">
+                <MudItem xs="12" sm="6">
+                    <MudNumericField Label="@L["Patient ID"]" @bind-Value="Model.PatientId" For="@(() => Model.PatientId)" Required="true" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <PicklistAutocomplete Picklist="Picklist.VisitType" T="string" Label="@L["Visit Type"]" @bind-Value="Model.VisitType" For="@(() => Model.VisitType)" Required="true" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudSelect T="int" Label="@L["Facility"]" @bind-Value="Model.FacilityId" For="@(() => Model.FacilityId)" Required="true">
+                        @foreach (var facility in _facilities)
+                        {
+                            <MudSelectItem T="int" Value="@facility.Id">@facility.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudSelect T="int?" Label="@L["Department"]" @bind-Value="Model.DepartmentId" For="@(() => Model.DepartmentId)" Clearable="true">
+                        @foreach (var dept in _departments)
+                        {
+                            <MudSelectItem T="int?" Value="@((int?)dept.Id)">@dept.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudSelect T="int?" Label="@L["Attending Doctor"]" @bind-Value="Model.AttendingDoctorId" For="@(() => Model.AttendingDoctorId)" Clearable="true">
+                        @foreach (var doctor in _doctors)
+                        {
+                            <MudSelectItem T="int?" Value="@((int?)doctor.Id)">@doctor.FullName</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+            </MudGrid>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">@ConstantString.Cancel</MudButton>
+        <MudLoadingButton Loading="@_savingnew" OnClick="SaveAndNew">@ConstantString.SaveAndNew</MudLoadingButton>
+        <MudLoadingButton Loading="@_saving" OnClick="Submit">@ConstantString.Save</MudLoadingButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    [EditorRequired][Parameter] public RegisterVisitCommand Model { get; set; } = default!;
+    [Parameter] public Action? Refresh { get; set; }
+    private MudForm? _form;
+    private bool _saving;
+    private bool _savingnew;
+    private IEnumerable<FacilityDto> _facilities = Enumerable.Empty<FacilityDto>();
+    private IEnumerable<DepartmentDto> _departments = Enumerable.Empty<DepartmentDto>();
+    private IEnumerable<StaffDto> _doctors = Enumerable.Empty<StaffDto>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _facilities = await Mediator.Send(new GetAllFacilitiesQuery());
+        _departments = await Mediator.Send(new GetAllDepartmentsQuery());
+        _doctors = await Mediator.Send(new GetAllStaffQuery());
+    }
+
+    private async Task Submit()
+    {
+        _saving = true;
+        try
+        {
+            await _form!.Validate().ConfigureAwait(false);
+            if (!_form!.IsValid) return;
+            var result = await Mediator.Send(Model);
+            result.Match(
+                data =>
+                {
+                    MudDialog.Close(DialogResult.Ok(true));
+                    Snackbar.Add(ConstantString.SaveSuccess, Severity.Info);
+                    return data;
+                },
+                errors =>
+                {
+                    Snackbar.Add(errors, Severity.Error);
+                    return 0;
+                });
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private async Task SaveAndNew()
+    {
+        _savingnew = true;
+        try
+        {
+            await _form!.Validate().ConfigureAwait(false);
+            if (!_form!.IsValid) return;
+            var result = await Mediator.Send(Model);
+            result.Match(
+                data =>
+                {
+                    Snackbar.Add(ConstantString.SaveSuccess, Severity.Info);
+                    Refresh?.Invoke();
+                    Model = new RegisterVisitCommand();
+                    return data;
+                },
+                errors =>
+                {
+                    Snackbar.Add(result.ErrorMessage, Severity.Error);
+                    return 0;
+                });
+        }
+        finally
+        {
+            _savingnew = false;
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

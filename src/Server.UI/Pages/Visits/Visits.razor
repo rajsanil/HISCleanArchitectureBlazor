@@ -1,0 +1,645 @@
+@page "/pages/visits"
+@using CleanArchitecture.Blazor.Application.Features.Visits.DTOs
+@using CleanArchitecture.Blazor.Application.Features.Visits.Mappers
+@using CleanArchitecture.Blazor.Application.Features.Visits.Queries.GetAll
+@using CleanArchitecture.Blazor.Application.Features.Visits.Caching
+@using CleanArchitecture.Blazor.Application.Features.Visits.Commands.Register
+@using CleanArchitecture.Blazor.Application.Features.Visits.Commands.Cancel
+@using CleanArchitecture.Blazor.Application.Features.Patients.DTOs
+@using CleanArchitecture.Blazor.Application.Features.Patients.Queries.GetAll
+@using CleanArchitecture.Blazor.Application.Features.Facilities.DTOs
+@using CleanArchitecture.Blazor.Application.Features.Facilities.Queries.GetAll
+@using CleanArchitecture.Blazor.Application.Features.Departments.DTOs
+@using CleanArchitecture.Blazor.Application.Features.Departments.Queries.GetAll
+@using CleanArchitecture.Blazor.Application.Features.StaffMembers.DTOs
+@using CleanArchitecture.Blazor.Application.Features.StaffMembers.Queries.GetAll
+@using CleanArchitecture.Blazor.Server.UI.Pages.Visits.Components
+
+@attribute [Authorize(Policy = Permissions.Visits.View)]
+@inject IStringLocalizer<Visits> L
+
+<PageTitle>@Title</PageTitle>
+
+<MudPaper Elevation="0" Class="pa-4">
+    @* ── Header Toolbar ── *@
+    <MudStack Row Spacing="0" Class="mb-3" Justify="Justify.SpaceBetween">
+        <MudStack Row AlignItems="AlignItems.Center">
+            <MudIcon Icon="@Icons.Material.Filled.LocalHospital" Size="Size.Large" Color="Color.Primary" />
+            <MudStack Spacing="0">
+                <MudText Typo="Typo.h6">@Title</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">@L["Manage patient visits and admissions"]</MudText>
+            </MudStack>
+        </MudStack>
+        <MudStack Row Spacing="1" AlignItems="AlignItems.Center" Class="flex-wrap">
+            @if (_canSearch)
+            {
+                <MudTextField T="string"
+                              Value="@_searchString"
+                              ValueChanged="@OnSearch"
+                              Placeholder="@ConstantString.Search"
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Search"
+                              IconSize="Size.Small"
+                              Class="mt-0"
+                              Style="min-width:200px;" />
+            }
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Default"
+                       StartIcon="@Icons.Material.Outlined.Refresh"
+                       OnClick="OnRefresh"
+                       Disabled="@_loading">
+                @ConstantString.Refresh
+            </MudButton>
+            @if (_canCreate)
+            {
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Outlined.Add"
+                           OnClick="OnCreate">
+                    @L["Register Visit"]
+                </MudButton>
+            }
+            @if (_canCreate)
+            {
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Outlined.ContentCopy"
+                           OnClick="OnClone"
+                           Disabled="@(_selectedItems?.Count() != 1)">
+                    @ConstantString.Clone
+                </MudButton>
+            }
+        </MudStack>
+    </MudStack>
+
+    @* ── Telerik Data Grid ── *@
+    <div class="telerik-grid-container">
+        <TelerikGrid Data="@_filteredItems"
+                     Pageable="true"
+                     PageSize="@_pageSize"
+                     @bind-Page="@_currentPage"
+                     Sortable="true"
+                     SortMode="@Telerik.Blazor.SortMode.Multiple"
+                     FilterMode="@GridFilterMode.FilterRow"
+                     Resizable="true"
+                     Reorderable="true"
+                     SelectionMode="@GridSelectionMode.Multiple"
+                     @bind-SelectedItems="@_selectedItems"
+                     Height="calc(100vh - 340px)"
+                     OnRowDoubleClick="@OnRowDoubleClick">
+            <GridColumns>
+                <GridCheckboxColumn Width="50px" SelectAll="true" />
+                <GridColumn Field="@nameof(VisitDto.VisitNumber)"
+                            Title="@L["Visit Number"]"
+                            Width="140px" />
+                <GridColumn Field="@nameof(VisitDto.PatientId)"
+                            Title="@L["Patient"]"
+                            Width="220px"
+                            Filterable="false">
+                    <Template>
+                        @{
+                            var item = (VisitDto)context;
+                            var patientName = _patientLookup.TryGetValue(item.PatientId, out var pn) ? pn : $"ID: {item.PatientId}";
+                        }
+                        <span>@patientName</span>
+                    </Template>
+                </GridColumn>
+                <GridColumn Field="@nameof(VisitDto.VisitType)"
+                            Title="@L["Visit Type"]"
+                            Width="150px" />
+                <GridColumn Field="@nameof(VisitDto.VisitStatus)"
+                            Title="@L["Status"]"
+                            Width="130px"
+                            TextAlign="@ColumnTextAlign.Center"
+                            Filterable="false">
+                    <Template>
+                        @{
+                            var item = (VisitDto)context;
+                        }
+                        <MudChip T="string" Size="Size.Small"
+                                 Color="@GetVisitStatusColor(item.VisitStatus)"
+                                 Variant="Variant.Filled">
+                            @item.VisitStatus
+                        </MudChip>
+                    </Template>
+                </GridColumn>
+                <GridColumn Field="@nameof(VisitDto.FacilityId)"
+                            Title="@L["Facility"]"
+                            Width="180px"
+                            Filterable="false">
+                    <Template>
+                        @{
+                            var item = (VisitDto)context;
+                            var facilityName = _facilityLookup.TryGetValue(item.FacilityId, out var fn) ? fn : item.FacilityId.ToString();
+                        }
+                        <span>@facilityName</span>
+                    </Template>
+                </GridColumn>
+                <GridColumn Field="@nameof(VisitDto.DepartmentId)"
+                            Title="@L["Department"]"
+                            Width="180px"
+                            Filterable="false">
+                    <Template>
+                        @{
+                            var item = (VisitDto)context;
+                            var deptName = item.DepartmentId.HasValue && _departmentLookup.TryGetValue(item.DepartmentId.Value, out var dn)
+                                ? dn : "—";
+                        }
+                        <span>@deptName</span>
+                    </Template>
+                </GridColumn>
+                <GridColumn Field="@nameof(VisitDto.AttendingDoctorId)"
+                            Title="@L["Attending Doctor"]"
+                            Width="200px"
+                            Filterable="false">
+                    <Template>
+                        @{
+                            var item = (VisitDto)context;
+                            var doctorName = item.AttendingDoctorId.HasValue && _doctorLookup.TryGetValue(item.AttendingDoctorId.Value, out var doc)
+                                ? doc : "—";
+                        }
+                        <span>@doctorName</span>
+                    </Template>
+                </GridColumn>
+                <GridColumn Field="@nameof(VisitDto.RegistrationDate)"
+                            Title="@L["Registration Date"]"
+                            Width="170px"
+                            Filterable="false">
+                    <Template>
+                        @{
+                            var item = (VisitDto)context;
+                        }
+                        <span>@item.RegistrationDate.ToString("dd/MM/yyyy HH:mm")</span>
+                    </Template>
+                </GridColumn>
+                <GridColumn Field="@nameof(VisitDto.DischargeDate)"
+                            Title="@L["Discharge Date"]"
+                            Width="170px"
+                            Filterable="false">
+                    <Template>
+                        @{
+                            var item = (VisitDto)context;
+                        }
+                        <span>@(item.DischargeDate?.ToString("dd/MM/yyyy HH:mm") ?? "—")</span>
+                    </Template>
+                </GridColumn>
+                <GridColumn Title="@ConstantString.Actions"
+                            Width="180px"
+                            Filterable="false"
+                            Sortable="false"
+                            TextAlign="@ColumnTextAlign.Center">
+                    <Template>
+                        @{
+                            var item = (VisitDto)context;
+                        }
+                        <MudStack Row Spacing="1" Justify="Justify.Center">
+                            @if (_canEdit)
+                            {
+                                <MudIconButton Icon="@Icons.Material.Outlined.Edit"
+                                               Size="Size.Small"
+                                               Color="Color.Primary"
+                                               OnClick="@(() => OnEdit(item))"
+                                               Title="@ConstantString.Edit" />
+                            }
+                            @if (_canAdmit && item.VisitStatus == "Registered")
+                            {
+                                <MudIconButton Icon="@Icons.Material.Outlined.MeetingRoom"
+                                               Size="Size.Small"
+                                               Color="Color.Info"
+                                               OnClick="@(() => OnAdmit(item))"
+                                               Title="@L["Admit Patient"]" />
+                            }
+                            @if (_canTransfer && item.VisitStatus == "Admitted")
+                            {
+                                <MudIconButton Icon="@Icons.Material.Outlined.SwapHoriz"
+                                               Size="Size.Small"
+                                               Color="Color.Warning"
+                                               OnClick="@(() => OnTransfer(item))"
+                                               Title="@L["Transfer Patient"]" />
+                            }
+                            @if (_canDischarge && (item.VisitStatus == "Admitted" || item.VisitStatus == "Registered"))
+                            {
+                                <MudIconButton Icon="@Icons.Material.Outlined.ExitToApp"
+                                               Size="Size.Small"
+                                               Color="Color.Success"
+                                               OnClick="@(() => OnDischarge(item))"
+                                               Title="@L["Discharge Patient"]" />
+                            }
+                            @if (_canCancel && item.VisitStatus != "Discharged" && item.VisitStatus != "Cancelled")
+                            {
+                                <MudIconButton Icon="@Icons.Material.Outlined.Cancel"
+                                               Size="Size.Small"
+                                               Color="Color.Error"
+                                               OnClick="@(() => OnCancel(item))"
+                                               Title="@L["Cancel Visit"]" />
+                            }
+                        </MudStack>
+                    </Template>
+                </GridColumn>
+            </GridColumns>
+        </TelerikGrid>
+    </div>
+</MudPaper>
+
+@* ── Telerik Window: Visit Form ── *@
+<TelerikWindow @bind-Visible="@_formVisible"
+               Modal="true"
+               Width="680px"
+               Class="visit-form-window">
+    <WindowTitle>
+        <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@Icons.Material.Filled.LocalHospital" Color="Color.Primary" />
+            <MudText Typo="Typo.h6">@_formTitle</MudText>
+        </MudStack>
+    </WindowTitle>
+    <WindowActions>
+        <WindowAction Name="Close" />
+    </WindowActions>
+    <WindowContent>
+        @if (_editModel is not null)
+        {
+            <MudForm @ref="_form" Model="@_editModel" Validation="@(Validator.ValidateValue(_editModel))">
+                <MudGrid Spacing="3" Class="pa-2">
+                    <MudItem xs="12" sm="6">
+                        <MudSelect T="int"
+                                   Label="@L["Patient"]"
+                                   @bind-Value="_editModel.PatientId"
+                                   Required="true"
+                                   Variant="Variant.Outlined"
+                                   AnchorOrigin="Origin.BottomCenter">
+                            @foreach (var patient in _patients)
+                            {
+                                <MudSelectItem T="int" Value="@patient.Id">@($"{patient.FirstName} {patient.LastName}")</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <PicklistAutocomplete Picklist="Picklist.VisitType"
+                                              T="string"
+                                              Label="@L["Visit Type"]"
+                                              @bind-Value="_editModel.VisitType"
+                                              Required="true"
+                                              Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudSelect T="int"
+                                   Label="@L["Facility"]"
+                                   @bind-Value="_editModel.FacilityId"
+                                   Required="true"
+                                   Variant="Variant.Outlined"
+                                   AnchorOrigin="Origin.BottomCenter">
+                            @foreach (var facility in _facilities)
+                            {
+                                <MudSelectItem T="int" Value="@facility.Id">@facility.Name</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudSelect T="int?"
+                                   Label="@L["Department"]"
+                                   @bind-Value="_editModel.DepartmentId"
+                                   Clearable="true"
+                                   Variant="Variant.Outlined"
+                                   AnchorOrigin="Origin.BottomCenter">
+                            @foreach (var dept in _departments)
+                            {
+                                <MudSelectItem T="int?" Value="@((int?)dept.Id)">@dept.Name</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudSelect T="int?"
+                                   Label="@L["Attending Doctor"]"
+                                   @bind-Value="_editModel.AttendingDoctorId"
+                                   Clearable="true"
+                                   Variant="Variant.Outlined"
+                                   AnchorOrigin="Origin.BottomCenter">
+                            @foreach (var doctor in _doctors)
+                            {
+                                <MudSelectItem T="int?" Value="@((int?)doctor.Id)">@doctor.FullName</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                </MudGrid>
+            </MudForm>
+
+            <MudStack Row Spacing="2" Justify="Justify.FlexEnd" Class="pa-2 mt-2">
+                <MudButton Variant="Variant.Text"
+                           Color="Color.Default"
+                           OnClick="CloseForm">
+                    @ConstantString.Cancel
+                </MudButton>
+                <MudLoadingButton Variant="Variant.Outlined"
+                                  Color="Color.Primary"
+                                  Loading="@_savingNew"
+                                  OnClick="SaveAndNew">
+                    @ConstantString.SaveAndNew
+                </MudLoadingButton>
+                <MudLoadingButton Variant="Variant.Filled"
+                                  Color="Color.Primary"
+                                  Loading="@_saving"
+                                  OnClick="SubmitForm">
+                    @ConstantString.Save
+                </MudLoadingButton>
+            </MudStack>
+        }
+    </WindowContent>
+</TelerikWindow>
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState> AuthState { get; set; } = default!;
+    [CascadingParameter] private UserProfile? UserProfile { get; set; }
+
+    // ── Grid state ──
+    public string? Title { get; private set; }
+    private List<VisitDto> _allVisits = new();
+    private List<VisitDto> _filteredItems = new();
+    private IEnumerable<VisitDto> _selectedItems { get; set; } = new List<VisitDto>();
+    private bool _loading;
+    private int _pageSize = 20;
+    private int _currentPage = 1;
+    private string _searchString = string.Empty;
+
+    // ── Lookup dictionaries for display ──
+    private List<PatientDto> _patients = new();
+    private Dictionary<int, string> _patientLookup = new();
+    private List<FacilityDto> _facilities = new();
+    private Dictionary<int, string> _facilityLookup = new();
+    private List<DepartmentDto> _departments = new();
+    private Dictionary<int, string> _departmentLookup = new();
+    private List<StaffDto> _doctors = new();
+    private Dictionary<int, string> _doctorLookup = new();
+
+    // ── Permissions ──
+    private bool _canSearch;
+    private bool _canCreate;
+    private bool _canEdit;
+    private bool _canCancel;
+    private bool _canAdmit;
+    private bool _canTransfer;
+    private bool _canDischarge;
+
+    // ── Form state ──
+    private bool _formVisible;
+    private string _formTitle = string.Empty;
+    private RegisterVisitCommand? _editModel;
+    private MudForm? _form;
+    private bool _saving;
+    private bool _savingNew;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Title = L["Visits"];
+        var state = await AuthState;
+        _canCreate = (await AuthService.AuthorizeAsync(state.User, Permissions.Visits.Create)).Succeeded;
+        _canSearch = (await AuthService.AuthorizeAsync(state.User, Permissions.Visits.Search)).Succeeded;
+        _canEdit = (await AuthService.AuthorizeAsync(state.User, Permissions.Visits.Edit)).Succeeded;
+        _canCancel = (await AuthService.AuthorizeAsync(state.User, Permissions.Visits.Cancel)).Succeeded;
+        _canAdmit = (await AuthService.AuthorizeAsync(state.User, Permissions.Visits.Admit)).Succeeded;
+        _canTransfer = (await AuthService.AuthorizeAsync(state.User, Permissions.Visits.Transfer)).Succeeded;
+        _canDischarge = (await AuthService.AuthorizeAsync(state.User, Permissions.Visits.Discharge)).Succeeded;
+
+        // Load lookup data
+        _patients = (await Mediator.Send(new GetAllPatientsQuery())).ToList();
+        _patientLookup = _patients.ToDictionary(p => p.Id, p => $"{p.FirstName} {p.LastName}".Trim());
+
+        _facilities = (await Mediator.Send(new GetAllFacilitiesQuery())).ToList();
+        _facilityLookup = _facilities.ToDictionary(f => f.Id, f => f.Name);
+
+        _departments = (await Mediator.Send(new GetAllDepartmentsQuery())).ToList();
+        _departmentLookup = _departments.ToDictionary(d => d.Id, d => d.Name);
+
+        _doctors = (await Mediator.Send(new GetAllStaffQuery())).ToList();
+        _doctorLookup = _doctors.ToDictionary(s => s.Id, s => s.FullName ?? $"Staff {s.Id}");
+
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        _loading = true;
+        try
+        {
+            var result = await Mediator.Send(new GetAllVisitsQuery());
+            _allVisits = result.ToList();
+            ApplySearch();
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void ApplySearch()
+    {
+        _filteredItems = string.IsNullOrWhiteSpace(_searchString)
+            ? _allVisits.ToList()
+            : _allVisits.Where(x =>
+                x.VisitNumber.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ||
+                x.VisitType.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ||
+                (_patientLookup.TryGetValue(x.PatientId, out var pName) && pName.Contains(_searchString, StringComparison.OrdinalIgnoreCase))
+            ).ToList();
+    }
+
+    private void OnSearch(string text)
+    {
+        _searchString = text;
+        ApplySearch();
+    }
+
+    private async Task OnRefresh()
+    {
+        VisitCacheKey.Refresh();
+        _selectedItems = new List<VisitDto>();
+        _searchString = string.Empty;
+        await LoadData();
+    }
+
+    private void OnRowDoubleClick(GridRowClickEventArgs args)
+    {
+        if (_canEdit && args.Item is VisitDto dto)
+        {
+            OnEdit(dto);
+        }
+    }
+
+    private Color GetVisitStatusColor(string status)
+    {
+        return status switch
+        {
+            "Registered" => Color.Info,
+            "Admitted" => Color.Primary,
+            "Discharged" => Color.Success,
+            "Cancelled" => Color.Default,
+            _ => Color.Default
+        };
+    }
+
+    // ── CRUD Operations ──
+
+    private void OnCreate()
+    {
+        _editModel = new RegisterVisitCommand();
+        _formTitle = string.Format(ConstantString.CreateAnItem, L["Visit"]);
+        _formVisible = true;
+    }
+
+    private void OnClone()
+    {
+        var copy = _selectedItems.FirstOrDefault();
+        if (copy is null) return;
+        _editModel = new RegisterVisitCommand
+        {
+            PatientId = copy.PatientId,
+            VisitType = copy.VisitType,
+            FacilityId = copy.FacilityId,
+            DepartmentId = copy.DepartmentId,
+            AttendingDoctorId = copy.AttendingDoctorId
+        };
+        _formTitle = string.Format(ConstantString.CreateAnItem, L["Visit"]);
+        _formVisible = true;
+    }
+
+    private void OnEdit(VisitDto dto)
+    {
+        _editModel = VisitMapper.ToRegisterCommand(dto);
+        _formTitle = string.Format(ConstantString.EditTheItem, L["Visit"]);
+        _formVisible = true;
+    }
+
+    // ── Form Actions ──
+
+    private async Task SubmitForm()
+    {
+        if (_editModel is null) return;
+        _saving = true;
+        try
+        {
+            await _form!.Validate();
+            if (!_form!.IsValid) return;
+
+            var result = await Mediator.Send(_editModel);
+            result.Match(
+                data =>
+                {
+                    _formVisible = false;
+                    Snackbar.Add(ConstantString.SaveSuccess, Severity.Info);
+                    return data;
+                },
+                errors =>
+                {
+                    Snackbar.Add(errors, Severity.Error);
+                    return 0;
+                });
+            await LoadData();
+            _selectedItems = new List<VisitDto>();
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private async Task SaveAndNew()
+    {
+        if (_editModel is null) return;
+        _savingNew = true;
+        try
+        {
+            await _form!.Validate();
+            if (!_form!.IsValid) return;
+
+            var result = await Mediator.Send(_editModel);
+            result.Match(
+                data =>
+                {
+                    Snackbar.Add(ConstantString.SaveSuccess, Severity.Info);
+                    _editModel = new RegisterVisitCommand();
+                    return data;
+                },
+                errors =>
+                {
+                    Snackbar.Add(errors, Severity.Error);
+                    return 0;
+                });
+            await LoadData();
+        }
+        finally
+        {
+            _savingNew = false;
+        }
+    }
+
+    private void CloseForm()
+    {
+        _formVisible = false;
+        _editModel = null;
+    }
+
+    // ── Special Visit Operations ──
+
+    private async Task OnAdmit(VisitDto dto)
+    {
+        var parameters = new DialogParameters<AdmitPatientDialog>
+        {
+            { x => x.VisitId, dto.Id },
+            { x => x.Refresh, async () => await LoadData() }
+        };
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<AdmitPatientDialog>(L["Admit Patient"], parameters, options);
+        var state = await dialog.Result;
+
+        if (state is not null && !state.Canceled)
+        {
+            await LoadData();
+        }
+    }
+
+    private async Task OnTransfer(VisitDto dto)
+    {
+        var parameters = new DialogParameters<TransferPatientDialog>
+        {
+            { x => x.VisitId, dto.Id },
+            { x => x.Refresh, async () => await LoadData() }
+        };
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<TransferPatientDialog>(L["Transfer Patient"], parameters, options);
+        var state = await dialog.Result;
+
+        if (state is not null && !state.Canceled)
+        {
+            await LoadData();
+        }
+    }
+
+    private async Task OnDischarge(VisitDto dto)
+    {
+        var parameters = new DialogParameters<DischargePatientDialog>
+        {
+            { x => x.VisitId, dto.Id },
+            { x => x.Refresh, async () => await LoadData() }
+        };
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Large, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<DischargePatientDialog>(L["Discharge Patient"], parameters, options);
+        var state = await dialog.Result;
+
+        if (state is not null && !state.Canceled)
+        {
+            await LoadData();
+        }
+    }
+
+    private async Task OnCancel(VisitDto dto)
+    {
+        var contentText = string.Format(L["Are you sure you want to cancel visit {0}?"], dto.VisitNumber);
+        var command = new CancelVisitCommand { VisitId = dto.Id };
+        await DialogServiceHelper.ShowDeleteConfirmationDialogAsync(command, L["Cancel Visit"], contentText, async () =>
+        {
+            await InvokeAsync(async () =>
+            {
+                await LoadData();
+                _selectedItems = new List<VisitDto>();
+            });
+        });
+    }
+}

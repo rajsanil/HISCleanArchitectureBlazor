@@ -181,7 +181,11 @@ public static class DependencyInjection
             .AddScoped<IExcelService, ExcelService>()
             .AddScoped<IUploadService, UploadService>()
             .AddScoped<IPDFService, PDFService>()
-            .AddTransient<IDocumentOcrJob, DocumentOcrJob>();
+            .AddTransient<IDocumentOcrJob, DocumentOcrJob>()
+            // HIS Generator Services
+            .AddScoped<IMrnGenerator, SequentialMrnGenerator>()
+            .AddScoped<IVisitNumberGenerator, SequentialVisitNumberGenerator>()
+            .AddScoped<IEncounterNumberGenerator, SequentialEncounterNumberGenerator>();
     }
 
     private static IServiceCollection AddMessageServices(this IServiceCollection services,

@@ -3,10 +3,25 @@
 @implements IDisposable
 <MudTooltip Arrow="true" Text="@L["User Profile"]">
     <MudMenu AnchorOrigin="Origin.BottomRight"
-    Icon="@Icons.Material.Filled.PermIdentity"
-    Class="mx-1"
     LockScroll="true"
     TransformOrigin="Origin.TopRight">
+        <ActivatorContent>
+            <MudAvatar Class="user-avatar ml-2 mr-1 cursor-pointer" Size="Size.Small"
+                       Color="Color.Primary" Variant="Variant.Outlined">
+                @if (UserProfile is not null && !string.IsNullOrEmpty(UserProfile.ProfilePictureDataUrl))
+                {
+                    <MudImage Src="@UserProfile.ProfilePictureDataUrl" />
+                }
+                else if (UserProfile is not null && !string.IsNullOrEmpty(UserProfile.UserName))
+                {
+                    @UserProfile.UserName.First()
+                }
+                else
+                {
+                    <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" />
+                }
+            </MudAvatar>
+        </ActivatorContent>
         <ChildContent>
             <div class="pb-4"
             style="min-width: 260px;margin-bottom:0px!important">
@@ -21,22 +36,19 @@
                     }
                     else
                     {
-                        <div class="avatar-container">
-                            <div class="rotating-border"></div>
-                            <MudAvatar Style="width: 40px; height: 40px;">
-                                @if (string.IsNullOrEmpty(UserProfile.ProfilePictureDataUrl))
-                                {
-                                    @(string.IsNullOrEmpty(UserProfile.UserName) ? "" : UserProfile.UserName.First())
-                                }
-                                else
-                                {
-                                    <MudImage Src="@UserProfile.ProfilePictureDataUrl"></MudImage>
-                                }
-                            </MudAvatar>
-                        </div>
+                        <MudAvatar Color="Color.Primary" Variant="Variant.Filled" Style="width: 44px; height: 44px;">
+                            @if (string.IsNullOrEmpty(UserProfile.ProfilePictureDataUrl))
+                            {
+                                @(string.IsNullOrEmpty(UserProfile.UserName) ? "" : UserProfile.UserName.First())
+                            }
+                            else
+                            {
+                                <MudImage Src="@UserProfile.ProfilePictureDataUrl"></MudImage>
+                            }
+                        </MudAvatar>
                         <MudStack Justify="Justify.SpaceBetween" Spacing="0">
-                            <MudText Typo="Typo.body1">@UserProfile.DisplayName</MudText>
-                            <MudText Typo="Typo.body2">@UserProfile.Email</MudText>
+                            <MudText Typo="Typo.body1"><b>@UserProfile.DisplayName</b></MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">@UserProfile.Email</MudText>
                         </MudStack>
                     }
                 </MudStack>
@@ -59,7 +71,7 @@
                 <div class="mt-4 mx-4">
                     <form action="@IdentityComponentsEndpointRouteBuilderExtensions.Logout" method="post">
                         <input type="hidden" name="ReturnUrl" value="/pages/authentication/login" />
-                        <MudButton Color="Color.Secondary"
+                        <MudButton Color="Color.Primary"
                         ButtonType="MudBlazor.ButtonType.Submit"
                         FullWidth="true"
                         StartIcon="@Icons.Material.Filled.Logout"

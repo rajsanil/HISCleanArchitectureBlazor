@@ -1,0 +1,531 @@
+@page "/pages/staff"
+@using CleanArchitecture.Blazor.Application.Features.StaffMembers.DTOs
+@using CleanArchitecture.Blazor.Application.Features.StaffMembers.Mappers
+@using CleanArchitecture.Blazor.Application.Features.StaffMembers.Queries.GetAll
+@using CleanArchitecture.Blazor.Application.Features.StaffMembers.Caching
+@using CleanArchitecture.Blazor.Application.Features.StaffMembers.Commands.AddEdit
+@using CleanArchitecture.Blazor.Application.Features.StaffMembers.Commands.Delete
+@using CleanArchitecture.Blazor.Application.Features.Departments.DTOs
+@using CleanArchitecture.Blazor.Application.Features.Departments.Queries.GetAll
+@using CleanArchitecture.Blazor.Application.Features.Specialties.DTOs
+@using CleanArchitecture.Blazor.Application.Features.Specialties.Queries.GetAll
+@using CleanArchitecture.Blazor.Application.Features.Identity.DTOs
+@using CleanArchitecture.Blazor.Server.UI.Components.Autocompletes
+
+@attribute [Authorize(Policy = Permissions.StaffMembers.View)]
+@inject IStringLocalizer<StaffMembers> L
+
+<PageTitle>@Title</PageTitle>
+
+<MudPaper Elevation="0" Class="pa-4">
+    @* ── Header Toolbar ── *@
+    <MudStack Row Spacing="0" Class="mb-3" Justify="Justify.SpaceBetween">
+        <MudStack Row AlignItems="AlignItems.Center">
+            <MudIcon Icon="@Icons.Material.Filled.Badge" Size="Size.Large" Color="Color.Primary" />
+            <MudStack Spacing="0">
+                <MudText Typo="Typo.h6">@Title</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">@L["Manage hospital staff and employees"]</MudText>
+            </MudStack>
+        </MudStack>
+        <MudStack Row Spacing="1" AlignItems="AlignItems.Center" Class="flex-wrap">
+            @if (_canSearch)
+            {
+                <MudTextField T="string"
+                              Value="@_searchString"
+                              ValueChanged="@OnSearch"
+                              Placeholder="@ConstantString.Search"
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Search"
+                              IconSize="Size.Small"
+                              Class="mt-0"
+                              Style="min-width:200px;" />
+            }
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Default"
+                       StartIcon="@Icons.Material.Outlined.Refresh"
+                       OnClick="OnRefresh"
+                       Disabled="@_loading">
+                @ConstantString.Refresh
+            </MudButton>
+            @if (_canCreate)
+            {
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Outlined.Add"
+                           OnClick="OnCreate">
+                    @ConstantString.New
+                </MudButton>
+            }
+            @if (_canCreate)
+            {
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Outlined.ContentCopy"
+                           OnClick="OnClone"
+                           Disabled="@(_selectedItems?.Count() != 1)">
+                    @ConstantString.Clone
+                </MudButton>
+            }
+            @if (_canDelete)
+            {
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Error"
+                           StartIcon="@Icons.Material.Outlined.Delete"
+                           OnClick="OnDeleteChecked"
+                           Disabled="@(!(_selectedItems?.Any() ?? false))">
+                    @ConstantString.Delete (@(_selectedItems?.Count() ?? 0))
+                </MudButton>
+            }
+        </MudStack>
+    </MudStack>
+
+    @* ── Telerik Data Grid ── *@
+    <div class="telerik-grid-container">
+        <TelerikGrid Data="@_filteredItems"
+                     Pageable="true"
+                     PageSize="@_pageSize"
+                     @bind-Page="@_currentPage"
+                     Sortable="true"
+                     SortMode="@Telerik.Blazor.SortMode.Multiple"
+                     FilterMode="@GridFilterMode.FilterRow"
+                     Resizable="true"
+                     Reorderable="true"
+                     SelectionMode="@GridSelectionMode.Multiple"
+                     @bind-SelectedItems="@_selectedItems"
+                     Height="calc(100vh - 340px)"
+                     OnRowDoubleClick="@OnRowDoubleClick">
+            <GridColumns>
+                <GridCheckboxColumn Width="50px" SelectAll="true" />
+                <GridColumn Field="@nameof(StaffDto.EmployeeCode)"
+                            Title="@L["Employee Code"]"
+                            Width="150px" />
+                <GridColumn Field="@nameof(StaffDto.FullName)"
+                            Title="@L["Full Name"]"
+                            Width="220px" />
+                <GridColumn Field="@nameof(StaffDto.StaffType)"
+                            Title="@L["Staff Type"]"
+                            Width="150px"
+                            Filterable="false" />
+                <GridColumn Field="@nameof(StaffDto.DepartmentId)"
+                            Title="@L["Department"]"
+                            Width="200px"
+                            Filterable="false">
+                    <Template>
+                        @{
+                            var item = (StaffDto)context;
+                            var deptName = item.DepartmentId.HasValue && _departmentLookup.TryGetValue(item.DepartmentId.Value, out var dn) 
+                                ? dn : "—";
+                        }
+                        <span>@deptName</span>
+                    </Template>
+                </GridColumn>
+                <GridColumn Field="@nameof(StaffDto.SpecialtyId)"
+                            Title="@L["Specialty"]"
+                            Width="180px"
+                            Filterable="false">
+                    <Template>
+                        @{
+                            var item = (StaffDto)context;
+                            var specName = item.SpecialtyId.HasValue && _specialtyLookup.TryGetValue(item.SpecialtyId.Value, out var sn) 
+                                ? sn : "—";
+                        }
+                        <span>@specName</span>
+                    </Template>
+                </GridColumn>
+                <GridColumn Field="@nameof(StaffDto.LicenseNumber)"
+                            Title="@L["License Number"]"
+                            Width="160px"
+                            Filterable="false" />
+                <GridColumn Field="@nameof(StaffDto.IsActive)"
+                            Title="@L["Active"]"
+                            Width="110px"
+                            TextAlign="@ColumnTextAlign.Center">
+                    <Template>
+                        @{
+                            var item = (StaffDto)context;
+                        }
+                        <MudChip T="string" Size="Size.Small"
+                                 Color="@(item.IsActive ? Color.Success : Color.Default)"
+                                 Variant="Variant.Filled">
+                            @(item.IsActive ? L["Active"] : L["Inactive"])
+                        </MudChip>
+                    </Template>
+                </GridColumn>
+                <GridColumn Title="@ConstantString.Actions"
+                            Width="120px"
+                            Filterable="false"
+                            Sortable="false"
+                            TextAlign="@ColumnTextAlign.Center">
+                    <Template>
+                        @{
+                            var item = (StaffDto)context;
+                        }
+                        @if (_canEdit)
+                        {
+                            <MudIconButton Icon="@Icons.Material.Outlined.Edit"
+                                           Size="Size.Small"
+                                           Color="Color.Primary"
+                                           OnClick="@(() => OnEdit(item))"
+                                           Title="@ConstantString.Edit" />
+                        }
+                        @if (_canDelete)
+                        {
+                            <MudIconButton Icon="@Icons.Material.Outlined.Delete"
+                                           Size="Size.Small"
+                                           Color="Color.Error"
+                                           OnClick="@(() => OnDelete(item))"
+                                           Title="@ConstantString.Delete" />
+                        }
+                    </Template>
+                </GridColumn>
+            </GridColumns>
+        </TelerikGrid>
+    </div>
+</MudPaper>
+
+@* ── Telerik Window: Staff Form ── *@
+<TelerikWindow @bind-Visible="@_formVisible"
+               Modal="true"
+               Width="680px"
+               Class="staff-form-window">
+    <WindowTitle>
+        <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@Icons.Material.Filled.Badge" Color="Color.Primary" />
+            <MudText Typo="Typo.h6">@_formTitle</MudText>
+        </MudStack>
+    </WindowTitle>
+    <WindowActions>
+        <WindowAction Name="Close" />
+    </WindowActions>
+    <WindowContent>
+        @if (_editModel is not null)
+        {
+            <MudForm @ref="_form" Model="@_editModel" Validation="@(Validator.ValidateValue(_editModel))">
+                <MudGrid Spacing="3" Class="pa-2">
+                    <MudItem xs="12" sm="6">
+                        <MudTextField Label="@L["Employee Code"]"
+                                      @bind-Value="_editModel.EmployeeCode"
+                                      Required="true"
+                                      Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField Label="@L["Title"]"
+                                      @bind-Value="_editModel.Title"
+                                      Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField Label="@L["First Name"]"
+                                      @bind-Value="_editModel.FirstName"
+                                      Required="true"
+                                      Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField Label="@L["Last Name"]"
+                                      @bind-Value="_editModel.LastName"
+                                      Required="true"
+                                      Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <PicklistAutocomplete Picklist="Picklist.StaffType"
+                                              T="string"
+                                              Label="@L["Staff Type"]"
+                                              @bind-Value="_editModel.StaffType"
+                                              Required="true" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudSelect T="int?"
+                                   Label="@L["Department"]"
+                                   @bind-Value="_editModel.DepartmentId"
+                                   Clearable="true"
+                                   Variant="Variant.Outlined"
+                                   AnchorOrigin="Origin.BottomCenter">
+                            @foreach (var dept in _departments)
+                            {
+                                <MudSelectItem T="int?" Value="@((int?)dept.Id)">@dept.Name</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudSelect T="int?"
+                                   Label="@L["Specialty"]"
+                                   @bind-Value="_editModel.SpecialtyId"
+                                   Clearable="true"
+                                   Variant="Variant.Outlined"
+                                   AnchorOrigin="Origin.BottomCenter">
+                            @foreach (var spec in _specialties)
+                            {
+                                <MudSelectItem T="int?" Value="@((int?)spec.Id)">@spec.Name</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField Label="@L["License Number"]"
+                                      @bind-Value="_editModel.LicenseNumber"
+                                      Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <PickUserAutocomplete T="ApplicationUserDto"
+                                              Label="@L["Application User"]"
+                                              Value="@_selectedUser"
+                                              ValueChanged="@((ApplicationUserDto user) => { _selectedUser = user; _editModel.ApplicationUserId = user?.Id; })" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6" Class="d-flex align-center">
+                        <MudCheckBox Label="@L["Is Active"]"
+                                     @bind-Value="_editModel.IsActive"
+                                     Color="Color.Primary" />
+                    </MudItem>
+                </MudGrid>
+            </MudForm>
+
+            <MudStack Row Spacing="2" Justify="Justify.FlexEnd" Class="pa-2 mt-2">
+                <MudButton Variant="Variant.Text"
+                           Color="Color.Default"
+                           OnClick="CloseForm">
+                    @ConstantString.Cancel
+                </MudButton>
+                <MudLoadingButton Variant="Variant.Outlined"
+                                  Color="Color.Primary"
+                                  Loading="@_savingNew"
+                                  OnClick="SaveAndNew">
+                    @ConstantString.SaveAndNew
+                </MudLoadingButton>
+                <MudLoadingButton Variant="Variant.Filled"
+                                  Color="Color.Primary"
+                                  Loading="@_saving"
+                                  OnClick="SubmitForm">
+                    @ConstantString.Save
+                </MudLoadingButton>
+            </MudStack>
+        }
+    </WindowContent>
+</TelerikWindow>
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState> AuthState { get; set; } = default!;
+    [CascadingParameter] private UserProfile? UserProfile { get; set; }
+
+    // ── Grid state ──
+    public string? Title { get; private set; }
+    private List<StaffDto> _allStaff = new();
+    private List<StaffDto> _filteredItems = new();
+    private IEnumerable<StaffDto> _selectedItems { get; set; } = new List<StaffDto>();
+    private bool _loading;
+    private int _pageSize = 20;
+    private int _currentPage = 1;
+    private string _searchString = string.Empty;
+
+    // ── Lookup dictionaries for display ──
+    private List<DepartmentDto> _departments = new();
+    private Dictionary<int, string> _departmentLookup = new();
+    private List<SpecialtyDto> _specialties = new();
+    private Dictionary<int, string> _specialtyLookup = new();
+
+    // ── Permissions ──
+    private bool _canSearch;
+    private bool _canCreate;
+    private bool _canEdit;
+    private bool _canDelete;
+
+    // ── Form state ──
+    private bool _formVisible;
+    private string _formTitle = string.Empty;
+    private AddEditStaffCommand? _editModel;
+    private ApplicationUserDto? _selectedUser;
+    private MudForm? _form;
+    private bool _saving;
+    private bool _savingNew;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Title = L["Staff Members"];
+        var state = await AuthState;
+        _canCreate = (await AuthService.AuthorizeAsync(state.User, Permissions.StaffMembers.Create)).Succeeded;
+        _canSearch = (await AuthService.AuthorizeAsync(state.User, Permissions.StaffMembers.Search)).Succeeded;
+        _canEdit = (await AuthService.AuthorizeAsync(state.User, Permissions.StaffMembers.Edit)).Succeeded;
+        _canDelete = (await AuthService.AuthorizeAsync(state.User, Permissions.StaffMembers.Delete)).Succeeded;
+
+        _departments = (await Mediator.Send(new GetAllDepartmentsQuery())).ToList();
+        _departmentLookup = _departments.ToDictionary(d => d.Id, d => d.Name);
+
+        _specialties = (await Mediator.Send(new GetAllSpecialtiesQuery())).ToList();
+        _specialtyLookup = _specialties.ToDictionary(s => s.Id, s => s.Name);
+
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        _loading = true;
+        try
+        {
+            var result = await Mediator.Send(new GetAllStaffQuery());
+            _allStaff = result.ToList();
+            ApplySearch();
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void ApplySearch()
+    {
+        _filteredItems = string.IsNullOrWhiteSpace(_searchString)
+            ? _allStaff.ToList()
+            : _allStaff.Where(x =>
+                x.FullName.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ||
+                x.EmployeeCode.Contains(_searchString, StringComparison.OrdinalIgnoreCase)
+            ).ToList();
+    }
+
+    private void OnSearch(string text)
+    {
+        _searchString = text;
+        ApplySearch();
+    }
+
+    private async Task OnRefresh()
+    {
+        StaffCacheKey.Refresh();
+        _selectedItems = new List<StaffDto>();
+        _searchString = string.Empty;
+        await LoadData();
+    }
+
+    private void OnRowDoubleClick(GridRowClickEventArgs args)
+    {
+        if (_canEdit && args.Item is StaffDto dto)
+        {
+            OnEdit(dto);
+        }
+    }
+
+    // ── CRUD Operations ──
+
+    private void OnCreate()
+    {
+        _editModel = new AddEditStaffCommand();
+        _selectedUser = null;
+        _formTitle = string.Format(ConstantString.CreateAnItem, L["Staff Member"]);
+        _formVisible = true;
+    }
+
+    private void OnClone()
+    {
+        var copy = _selectedItems.FirstOrDefault();
+        if (copy is null) return;
+        _editModel = StaffMapper.CloneFromDto(copy);
+        _selectedUser = null;
+        _formTitle = string.Format(ConstantString.CreateAnItem, L["Staff Member"]);
+        _formVisible = true;
+    }
+
+    private void OnEdit(StaffDto dto)
+    {
+        _editModel = StaffMapper.ToEditCommand(dto);
+        _selectedUser = null;
+        _formTitle = string.Format(ConstantString.EditTheItem, L["Staff Member"]);
+        _formVisible = true;
+    }
+
+    private async Task OnDelete(StaffDto dto)
+    {
+        var contentText = string.Format(ConstantString.DeleteConfirmation, dto.FullName);
+        var command = new DeleteStaffCommand(new[] { dto.Id });
+        await DialogServiceHelper.ShowDeleteConfirmationDialogAsync(command, ConstantString.DeleteConfirmationTitle, contentText, async () =>
+        {
+            await InvokeAsync(async () =>
+            {
+                await LoadData();
+                _selectedItems = new List<StaffDto>();
+            });
+        });
+    }
+
+    private async Task OnDeleteChecked()
+    {
+        var selected = _selectedItems.ToList();
+        if (!selected.Any()) return;
+        var contentText = string.Format(ConstantString.DeleteConfirmWithSelected, selected.Count);
+        var command = new DeleteStaffCommand(selected.Select(x => x.Id).ToArray());
+        await DialogServiceHelper.ShowDeleteConfirmationDialogAsync(command, ConstantString.DeleteConfirmationTitle, contentText, async () =>
+        {
+            await InvokeAsync(async () =>
+            {
+                await LoadData();
+                _selectedItems = new List<StaffDto>();
+            });
+        });
+    }
+
+    // ── Form Actions ──
+
+    private async Task SubmitForm()
+    {
+        if (_editModel is null) return;
+        _saving = true;
+        try
+        {
+            await _form!.Validate();
+            if (!_form!.IsValid) return;
+
+            var result = await Mediator.Send(_editModel);
+            result.Match(
+                data =>
+                {
+                    _formVisible = false;
+                    Snackbar.Add(ConstantString.SaveSuccess, Severity.Info);
+                    return data;
+                },
+                errors =>
+                {
+                    Snackbar.Add(errors, Severity.Error);
+                    return 0;
+                });
+            await LoadData();
+            _selectedItems = new List<StaffDto>();
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private async Task SaveAndNew()
+    {
+        if (_editModel is null) return;
+        _savingNew = true;
+        try
+        {
+            await _form!.Validate();
+            if (!_form!.IsValid) return;
+
+            var result = await Mediator.Send(_editModel);
+            result.Match(
+                data =>
+                {
+                    Snackbar.Add(ConstantString.SaveSuccess, Severity.Info);
+                    _editModel = new AddEditStaffCommand();
+                    _selectedUser = null;
+                    return data;
+                },
+                errors =>
+                {
+                    Snackbar.Add(errors, Severity.Error);
+                    return 0;
+                });
+            await LoadData();
+        }
+        finally
+        {
+            _savingNew = false;
+        }
+    }
+
+    private void CloseForm()
+    {
+        _formVisible = false;
+        _editModel = null;
+        _selectedUser = null;
+    }
+}

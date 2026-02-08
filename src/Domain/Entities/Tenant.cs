@@ -7,4 +7,10 @@ public class Tenant : IEntity<string>
     public string? Name { get; set; }
     public string? Description { get; set; }
     public string Id { get; set; } = Guid.NewGuid().ToString();
+
+    // DB-per-tenant support
+    public string? ConnectionString { get; set; }
+    public string? DBProvider { get; set; }
+    public bool IsActive { get; set; } = true;
+    public DateTime? SubscriptionExpiry { get; set; }
 }
