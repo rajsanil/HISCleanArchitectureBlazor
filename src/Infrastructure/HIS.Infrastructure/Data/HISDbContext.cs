@@ -11,6 +11,7 @@ public class HISDbContext : DbContext
 
     public DbSet<Patient> Patients { get; set; }
     public DbSet<Appointment> Appointments { get; set; }
+    public DbSet<Country> Countries { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -37,6 +38,17 @@ public class HISDbContext : DbContext
             entity.Property(e => e.DoctorName).IsRequired().HasMaxLength(200);
             entity.Property(e => e.Status).IsRequired().HasMaxLength(50);
             entity.Property(e => e.Reason).IsRequired().HasMaxLength(500);
+        });
+
+        modelBuilder.Entity<Country>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Code).IsRequired().HasMaxLength(10);
+            entity.Property(e => e.Description).HasMaxLength(500);
+            
+            // Create a unique index on the country code
+            entity.HasIndex(e => e.Code).IsUnique();
         });
     }
 }
