@@ -11,4 +11,5 @@ public class FacilityDto
     [Description("Address")] public string? Address { get; set; }
     [Description("Phone")] public string? Phone { get; set; }
     [Description("Email")] public string? Email { get; set; }
+    [Description("Tenant Id")] public string TenantId { get; set; } = string.Empty;
 }

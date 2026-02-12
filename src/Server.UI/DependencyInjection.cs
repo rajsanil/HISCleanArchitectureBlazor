@@ -8,6 +8,7 @@ using CleanArchitecture.Blazor.Server.UI.Services.Layout;
 using CleanArchitecture.Blazor.Server.UI.Services.Navigation;
 using CleanArchitecture.Blazor.Server.UI.Services.Notifications;
 using CleanArchitecture.Blazor.Server.UI.Services.UserPreferences;
+using HIS.Core.Abstractions;
 using Hangfire;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.FileProviders;
@@ -34,7 +35,11 @@ public static class DependencyInjection
     /// <returns>The updated service collection.</returns>
     public static IServiceCollection AddServerUI(this IServiceCollection services, IConfiguration config)
     {
-        services.AddRazorComponents().AddInteractiveServerComponents().AddHubOptions(options=> options.MaximumReceiveMessageSize = 64 * 1024);
+        // Add Razor Components with interactive server components
+        services.AddRazorComponents()
+            .AddInteractiveServerComponents()
+            .AddHubOptions(options => options.MaximumReceiveMessageSize = 64 * 1024);
+        
         services.AddCascadingAuthenticationState();
         services.AddScoped<IdentityUserAccessor>();
         services.AddScoped<IdentityRedirectManager>();
@@ -103,6 +108,7 @@ public static class DependencyInjection
             .AddScoped<AuthenticationStateProvider, IdentityRevalidatingAuthenticationStateProvider>()
             .AddScoped<LayoutService>()
             .AddScoped<DialogServiceHelper>()
+            .AddScoped<HIS.Core.UI.Services.DialogServiceHelper>()
             .AddScoped<PermissionHelper>()
             .AddBlazorDownloadFile()
             .AddScoped<IUserPreferencesService, UserPreferencesService>()
@@ -143,6 +149,10 @@ public static class DependencyInjection
         app.MapHealthChecks("/health");
         app.UseAuthentication();
         app.UseAuthorization();
+        
+        // License validation middleware
+        app.UseMiddleware<LicenseValidationMiddleware>();
+        
         app.UseAntiforgery();
         app.UseHttpsRedirection();
         app.MapStaticAssets();
@@ -171,7 +181,12 @@ public static class DependencyInjection
             Authorization = new[] { new HangfireDashboardAuthorizationFilter() },
             AsyncAuthorization = new[] { new HangfireDashboardAsyncAuthorizationFilter() }
         });
-        app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
+        app.MapRazorComponents<App>()
+            .AddInteractiveServerRenderMode()
+            .AddAdditionalAssemblies(
+                typeof(HIS.MasterData.UI.Pages.Countries.Countries).Assembly,
+                typeof(HIS.Core.UI.Services.DialogServiceHelper).Assembly
+            );
         app.MapHub<ServerHub>(ISignalRHub.Url);
 
         //QuestPDF License configuration
@@ -186,5 +201,83 @@ public static class DependencyInjection
         });
        
         return app;
+    }
+
+    /// <summary>
+    /// Validates license on application startup and logs license information.
+    /// </summary>
+    public static void ValidateLicenseOnStartup(this WebApplication app)
+    {
+        using var scope = app.Services.CreateScope();
+        var licenseService = scope.ServiceProvider.GetRequiredService<ILicenseService>();
+        var moduleLoader = scope.ServiceProvider.GetRequiredService<IModuleLoader>();
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+
+        var licenseInfo = licenseService.GetLicenseInfo();
+
+        if (licenseInfo == null)
+        {
+            logger.LogWarning("╔════════════════════════════════════════════════════════════╗");
+            logger.LogWarning("║  WARNING: No valid license found!                          ║");
+            logger.LogWarning("║  Running in DEVELOPMENT MODE with all modules enabled.     ║");
+            logger.LogWarning("║  This should only be used for development/testing.         ║");
+            logger.LogWarning("╚════════════════════════════════════════════════════════════╝");
+            return;
+        }
+
+        // Log license information
+        logger.LogInformation("╔════════════════════════════════════════════════════════════╗");
+        logger.LogInformation("║  License Information                                       ║");
+        logger.LogInformation("╠════════════════════════════════════════════════════════════╣");
+        logger.LogInformation("║  Customer:        {Customer,-40} ║", licenseInfo.CustomerName);
+        logger.LogInformation("║  License Type:    {LicenseType,-40} ║", licenseInfo.LicenseType);
+        logger.LogInformation("║  Max Users:       {MaxUsers,-40} ║", licenseInfo.MaxUsers);
+        logger.LogInformation("║  Issued:          {IssuedDate,-40} ║", licenseInfo.IssuedDate?.ToString("yyyy-MM-dd") ?? "N/A");
+        logger.LogInformation("║  Expires:         {ExpiryDate,-40} ║", licenseInfo.ExpiryDate?.ToString("yyyy-MM-dd") ?? "Never");
+        logger.LogInformation("╚════════════════════════════════════════════════════════════╝");
+
+        // Check expiration and warn if needed
+        var daysUntilExpiration = licenseService.GetDaysUntilExpiration();
+        if (daysUntilExpiration != null)
+        {
+            if (daysUntilExpiration.Value < 0)
+            {
+                logger.LogError("╔════════════════════════════════════════════════════════════╗");
+                logger.LogError("║  CRITICAL: LICENSE HAS EXPIRED!                            ║");
+                logger.LogError("║  Expired {Days} days ago. Contact support for renewal.    ║", Math.Abs(daysUntilExpiration.Value));
+                logger.LogError("╚════════════════════════════════════════════════════════════╝");
+            }
+            else if (daysUntilExpiration.Value <= 30)
+            {
+                logger.LogWarning("╔════════════════════════════════════════════════════════════╗");
+                logger.LogWarning("║  WARNING: LICENSE EXPIRING SOON!                           ║");
+                logger.LogWarning("║  {Days} days remaining. Contact support for renewal.      ║", daysUntilExpiration.Value);
+                logger.LogWarning("╚════════════════════════════════════════════════════════════╝");
+            }
+        }
+
+        // Log licensed modules
+        var licensedModules = licenseService.GetLicensedModules();
+        logger.LogInformation("Licensed Modules ({Count}): {Modules}",
+            licensedModules.Count(),
+            string.Join(", ", licensedModules.Select(m => m.Replace("HIS.", ""))));
+
+        // Log active modules
+        var activeModules = moduleLoader.GetActiveModules();
+        logger.LogInformation("Active Modules ({Count}): {Modules}",
+            activeModules.Count(),
+            string.Join(", ", activeModules.Select(m => m.ModuleId.Replace("HIS.", ""))));
+
+        // Validate that all active modules are licensed
+        foreach (var module in activeModules)
+        {
+            if (!licenseService.IsModuleLicensed(module.ModuleId))
+            {
+                logger.LogWarning("Module {ModuleId} is active but not licensed! This should not happen.",
+                    module.ModuleId);
+            }
+        }
+
+        logger.LogInformation("License validation completed successfully.");
     }
 }

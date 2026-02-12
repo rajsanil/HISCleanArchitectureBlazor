@@ -1,8 +1,14 @@
-﻿@using System.Net.Http
-@using System.Net.Http.Json
-@using System.Reflection
-@using System.Text
-@using System.ComponentModel
+﻿@using global::System.Net.Http
+@using global::System.Net.Http.Json
+@using global::System.Reflection
+@using global::System.Text
+@using global::System.ComponentModel
+@using global::System.ComponentModel.DataAnnotations
+@using global::System.Diagnostics
+@using global::System.Linq
+@using global::System.Linq.Expressions
+@using global::System.Security.Claims
+@using global::System.Globalization
 @using CleanArchitecture.Blazor.Application.Common.Interfaces.MediatorWrapper
 @using CleanArchitecture.Blazor.Server.UI.Services
 @using Microsoft.AspNetCore.Authorization
@@ -53,6 +59,9 @@
 @using CleanArchitecture.Blazor.Server.UI.Extensions
 @using Severity=MudBlazor.Severity
 @using Color = MudBlazor.Color
+@using HIS.Core.Abstractions
+@using HIS.Core.Licensing
+@using HIS.MasterData.Application.DTOs
 @inject IApplicationSettings ApplicationSettings
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService

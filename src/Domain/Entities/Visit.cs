@@ -18,7 +18,6 @@ public class Visit : BaseAuditableSoftDeleteEntity, IMustHaveTenant
 
     public virtual Patient? Patient { get; set; }
     public virtual Facility? Facility { get; set; }
-    public virtual Department? Department { get; set; }
     public virtual Staff? AttendingDoctor { get; set; }
     public virtual Admission? Admission { get; set; }
     public virtual Discharge? Discharge { get; set; }

@@ -19,20 +19,16 @@ public class AdmissionConfiguration : IEntityTypeConfiguration<Admission>
             .HasForeignKey<Admission>(x => x.VisitId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasOne(x => x.Bed)
-            .WithMany()
-            .HasForeignKey(x => x.BedId)
-            .OnDelete(DeleteBehavior.Restrict);
+        // Note: Bed navigation removed - entity moved to MasterData module
+        // Foreign key relationship maintained via BedId
 
         builder.HasOne(x => x.Room)
             .WithMany()
             .HasForeignKey(x => x.RoomId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasOne(x => x.Location)
-            .WithMany()
-            .HasForeignKey(x => x.LocationId)
-            .OnDelete(DeleteBehavior.Restrict);
+        // Note: Location navigation removed - entity moved to MasterData module
+        // Foreign key relationship maintained via LocationId
 
         builder.HasOne(x => x.AdmittingDoctor)
             .WithMany()

@@ -1,0 +1,464 @@
+@page "/pages/countries"
+@using HIS.MasterData.Application.Features.Countries.DTOs
+@using HIS.MasterData.Application.Features.Countries.Mappers
+@using HIS.MasterData.Application.Features.Countries.Queries.GetAll
+@using HIS.MasterData.Application.Features.Countries.Caching
+@using HIS.MasterData.Application.Features.Countries.Commands.AddEdit
+@using HIS.MasterData.Application.Features.Countries.Commands.Delete
+
+@attribute [Authorize(Policy = MasterDataPermissions.Countries.View)]
+@inject IStringLocalizer<Countries> L
+
+<PageTitle>@Title</PageTitle>
+
+<MudPaper Elevation="0" Class="pa-4">
+    @* -- Header Toolbar -- *@
+    <MudStack Row Spacing="0" Class="mb-3" Justify="Justify.SpaceBetween">
+        <MudStack Row AlignItems="AlignItems.Center">
+            <MudIcon Icon="@Icons.Material.Filled.Public" Size="Size.Large" Color="Color.Primary" />
+            <MudStack Spacing="0">
+                <MudText Typo="Typo.h6">@Title</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">@L["Manage countries and regions"]</MudText>
+            </MudStack>
+        </MudStack>
+        <MudStack Row Spacing="1" AlignItems="AlignItems.Center" Class="flex-wrap">
+            @if (_canSearch)
+            {
+                <MudTextField T="string"
+                              Value="@_searchString"
+                              ValueChanged="@OnSearch"
+                              Placeholder="@ConstantString.Search"
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Search"
+                              IconSize="Size.Small"
+                              Class="mt-0"
+                              Style="min-width:200px;" />
+            }
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Default"
+                       StartIcon="@Icons.Material.Outlined.Refresh"
+                       OnClick="OnRefresh"
+                       Disabled="@_loading">
+                @ConstantString.Refresh
+            </MudButton>
+            @if (_canCreate)
+            {
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Outlined.Add"
+                           OnClick="OnCreate">
+                    @ConstantString.New
+                </MudButton>
+            }
+            @if (_canCreate)
+            {
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Outlined.ContentCopy"
+                           OnClick="OnClone"
+                           Disabled="@(_selectedItems?.Count() != 1)">
+                    @ConstantString.Clone
+                </MudButton>
+            }
+            @if (_canDelete)
+            {
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Error"
+                           StartIcon="@Icons.Material.Outlined.Delete"
+                           OnClick="OnDeleteChecked"
+                           Disabled="@(!(_selectedItems?.Any() ?? false))">
+                    @ConstantString.Delete (@(_selectedItems?.Count() ?? 0))
+                </MudButton>
+            }
+        </MudStack>
+    </MudStack>
+
+    @* -- Telerik Data Grid -- *@
+    <div class="telerik-grid-container">
+        <TelerikGrid Data="@_filteredItems"
+                     Pageable="true"
+                     PageSize="@_pageSize"
+                     @bind-Page="@_currentPage"
+                     Sortable="true"
+                     SortMode="@Telerik.Blazor.SortMode.Multiple"
+                     FilterMode="@GridFilterMode.FilterRow"
+                     Resizable="true"
+                     Reorderable="true"
+                     SelectionMode="@GridSelectionMode.Multiple"
+                     @bind-SelectedItems="@_selectedItems"
+                     Height="calc(100vh - 340px)"
+                     OnRowDoubleClick="@OnRowDoubleClick">
+            <GridColumns>
+                <GridCheckboxColumn Width="50px" SelectAll="true" />
+                <GridColumn Field="@nameof(CountryDto.Code)" Title="@L["Code"]" Width="120px" />
+                <GridColumn Field="@nameof(CountryDto.Name)" Title="@L["Name"]" Width="220px" />
+                <GridColumn Field="@nameof(CountryDto.NameArabic)" Title="@L["Name (Arabic)"]" Width="200px" />
+                <GridColumn Field="@nameof(CountryDto.Iso2Code)" Title="@L["ISO2"]" Width="100px" />
+                <GridColumn Field="@nameof(CountryDto.Iso3Code)" Title="@L["ISO3"]" Width="100px" />
+                <GridColumn Field="@nameof(CountryDto.PhoneCode)" Title="@L["Phone Code"]" Width="130px" />
+                <GridColumn Field="@nameof(CountryDto.IsActive)" Title="@L["Active"]" Width="110px" TextAlign="@ColumnTextAlign.Center">
+                    <Template>
+                        @{ var item = (CountryDto)context; }
+                        <MudChip T="string" Size="Size.Small"
+                                 Color="@(item.IsActive ? Color.Success : Color.Default)"
+                                 Variant="Variant.Filled">
+                            @(item.IsActive ? L["Active"] : L["Inactive"])
+                        </MudChip>
+                    </Template>
+                </GridColumn>
+                <GridColumn Title="@ConstantString.Actions" Width="120px" Filterable="false" Sortable="false" TextAlign="@ColumnTextAlign.Center">
+                    <Template>
+                        @{ var item = (CountryDto)context; }
+                        @if (_canEdit)
+                        {
+                            <MudIconButton Icon="@Icons.Material.Outlined.Edit" Size="Size.Small" Color="Color.Primary"
+                                           OnClick="@(() => OnEdit(item))" Title="@ConstantString.Edit" />
+                        }
+                        @if (_canDelete)
+                        {
+                            <MudIconButton Icon="@Icons.Material.Outlined.Delete" Size="Size.Small" Color="Color.Error"
+                                           OnClick="@(() => OnDelete(item))" Title="@ConstantString.Delete" />
+                        }
+                    </Template>
+                </GridColumn>
+            </GridColumns>
+        </TelerikGrid>
+    </div>
+</MudPaper>
+
+@* -- Telerik Window: Country Form -- *@
+<TelerikWindow @bind-Visible="@_formVisible" Modal="true" Width="780px" Class="country-form-window">
+    <WindowTitle>
+        <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@Icons.Material.Filled.Public" Color="Color.Primary" />
+            <MudText Typo="Typo.h6">@_formTitle</MudText>
+        </MudStack>
+    </WindowTitle>
+    <WindowActions><WindowAction Name="Close" /></WindowActions>
+    <WindowContent>
+        @if (_editModel is not null)
+        {
+            <MudForm @ref="_form" Model="@_editModel" Validation="@(Validator.ValidateValue(_editModel))" ValidationDelay="0">
+                <MudGrid Spacing="3" Class="pa-2">
+                    <MudItem xs="12" sm="4">
+                        <MudTextField @ref="_codeField" Label="@L["Code"]" @bind-Value="_editModel.Code" 
+                                      For="@(() => _editModel.Code)" Required="true" Variant="Variant.Outlined" 
+                                      Error="@_fieldErrors.ContainsKey("Code")" ErrorText="@GetFieldError("Code")" />
+                    </MudItem>
+                    <MudItem xs="12" sm="4">
+                        <MudTextField @ref="_nameField" Label="@L["Name"]" @bind-Value="_editModel.Name" 
+                                      For="@(() => _editModel.Name)" Required="true" Variant="Variant.Outlined" 
+                                      Error="@_fieldErrors.ContainsKey("Name")" ErrorText="@GetFieldError("Name")" />
+                    </MudItem>
+                    <MudItem xs="12" sm="4">
+                        <MudTextField Label="@L["Name (Arabic)"]" @bind-Value="_editModel.NameArabic" 
+                                      For="@(() => _editModel.NameArabic)" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="12" sm="4">
+                        <MudTextField @ref="_iso2Field" Label="@L["ISO2 Code"]" @bind-Value="_editModel.Iso2Code" 
+                                      For="@(() => _editModel.Iso2Code)" Variant="Variant.Outlined" MaxLength="2" 
+                                      Error="@_fieldErrors.ContainsKey("Iso2Code")" ErrorText="@GetFieldError("Iso2Code")" />
+                    </MudItem>
+                    <MudItem xs="12" sm="4">
+                        <MudTextField @ref="_iso3Field" Label="@L["ISO3 Code"]" @bind-Value="_editModel.Iso3Code" 
+                                      For="@(() => _editModel.Iso3Code)" Variant="Variant.Outlined" MaxLength="3" 
+                                      Error="@_fieldErrors.ContainsKey("Iso3Code")" ErrorText="@GetFieldError("Iso3Code")" />
+                    </MudItem>
+                    <MudItem xs="12" sm="4">
+                        <MudTextField Label="@L["Phone Code"]" @bind-Value="_editModel.PhoneCode" 
+                                      For="@(() => _editModel.PhoneCode)" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="12" sm="4" Class="d-flex align-center">
+                        <MudCheckBox Label="@L["Is Active"]" @bind-Value="_editModel.IsActive" Color="Color.Primary" />
+                    </MudItem>
+                </MudGrid>
+            </MudForm>
+            <MudStack Row Spacing="2" Justify="Justify.FlexEnd" Class="pa-2 mt-2">
+                <MudButton Variant="Variant.Text" Color="Color.Default" OnClick="CloseForm">@ConstantString.Cancel</MudButton>
+                <MudLoadingButton Variant="Variant.Outlined" Color="Color.Primary" Loading="@_savingNew" OnClick="SaveAndNew">@ConstantString.SaveAndNew</MudLoadingButton>
+                <MudLoadingButton Variant="Variant.Filled" Color="Color.Primary" Loading="@_saving" OnClick="SubmitForm">@ConstantString.Save</MudLoadingButton>
+            </MudStack>
+        }
+    </WindowContent>
+</TelerikWindow>
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState> AuthState { get; set; } = default!;
+    [CascadingParameter] private UserProfile? UserProfile { get; set; }
+
+    public string? Title { get; private set; }
+    private List<CountryDto> _allCountries = new();
+    private List<CountryDto> _filteredItems = new();
+    private IEnumerable<CountryDto> _selectedItems { get; set; } = new List<CountryDto>();
+    private bool _loading;
+    private int _pageSize = 20;
+    private int _currentPage = 1;
+    private string _searchString = string.Empty;
+
+    // -- Permissions --
+    private bool _canSearch;
+    private bool _canCreate;
+    private bool _canEdit;
+    private bool _canDelete;
+
+    // -- Form state --
+    private bool _formVisible;
+    private string _formTitle = string.Empty;
+    private AddEditCountryCommand? _editModel;
+    private MudForm? _form;
+    private bool _saving;
+    private bool _savingNew;
+    private Dictionary<string, string> _fieldErrors = new();
+    private MudTextField<string>? _codeField;
+    private MudTextField<string>? _nameField;
+    private MudTextField<string?>? _iso2Field;
+    private MudTextField<string?>? _iso3Field;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Title = L["Countries"];
+        var state = await AuthState;
+        _canCreate = (await AuthService.AuthorizeAsync(state.User, MasterDataPermissions.Countries.Create)).Succeeded;
+        _canSearch = (await AuthService.AuthorizeAsync(state.User, MasterDataPermissions.Countries.Search)).Succeeded;
+        _canEdit = (await AuthService.AuthorizeAsync(state.User, MasterDataPermissions.Countries.Edit)).Succeeded;
+        _canDelete = (await AuthService.AuthorizeAsync(state.User, MasterDataPermissions.Countries.Delete)).Succeeded;
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        _loading = true;
+        try
+        {
+            var result = await Mediator.Send(new GetAllCountriesQuery());
+            _allCountries = result.ToList();
+            ApplySearch();
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void ApplySearch()
+    {
+        _filteredItems = string.IsNullOrWhiteSpace(_searchString)
+            ? _allCountries.ToList()
+            : _allCountries.Where(x =>
+                x.Name.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ||
+                x.Code.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ||
+                (x.NameArabic?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (x.Iso2Code?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (x.Iso3Code?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (x.PhoneCode?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false)
+            ).ToList();
+    }
+
+    private void OnSearch(string text)
+    {
+        _searchString = text;
+        ApplySearch();
+    }
+
+    private async Task OnRefresh()
+    {
+        CountryCacheKey.Refresh();
+        _selectedItems = new List<CountryDto>();
+        _searchString = string.Empty;
+        await LoadData();
+    }
+
+    private void OnRowDoubleClick(GridRowClickEventArgs args)
+    {
+        if (_canEdit && args.Item is CountryDto dto)
+        {
+            OnEdit(dto);
+        }
+    }
+
+    // -- CRUD Operations --
+
+    private void OnCreate()
+    {
+        ClearFieldErrors();
+        _editModel = new AddEditCountryCommand();
+        _formTitle = string.Format(ConstantString.CreateAnItem, L["Country"]);
+        _formVisible = true;
+    }
+
+    private void OnClone()
+    {
+        var copy = _selectedItems.FirstOrDefault();
+        if (copy is null) return;
+        ClearFieldErrors();
+        _editModel = CountryMapper.CloneFromDto(copy);
+        _formTitle = string.Format(ConstantString.CreateAnItem, L["Country"]);
+        _formVisible = true;
+    }
+
+    private void OnEdit(CountryDto dto)
+    {
+        ClearFieldErrors();
+        _editModel = CountryMapper.ToEditCommand(dto);
+        _formTitle = string.Format(ConstantString.EditTheItem, L["Country"]);
+        _formVisible = true;
+    }
+
+    private async Task OnDelete(CountryDto dto)
+    {
+        var contentText = string.Format(ConstantString.DeleteConfirmation, dto.Name);
+        var command = new DeleteCountryCommand(new[] { dto.Id });
+        await DialogServiceHelper.ShowDeleteConfirmationDialogAsync(command, ConstantString.DeleteConfirmationTitle, contentText, async () =>
+        {
+            await InvokeAsync(async () =>
+            {
+                await LoadData();
+                _selectedItems = new List<CountryDto>();
+            });
+        });
+    }
+
+    private async Task OnDeleteChecked()
+    {
+        var selected = _selectedItems.ToList();
+        if (!selected.Any()) return;
+        var contentText = string.Format(ConstantString.DeleteConfirmWithSelected, selected.Count);
+        var command = new DeleteCountryCommand(selected.Select(x => x.Id).ToArray());
+        await DialogServiceHelper.ShowDeleteConfirmationDialogAsync(command, ConstantString.DeleteConfirmationTitle, contentText, async () =>
+        {
+            await InvokeAsync(async () =>
+            {
+                await LoadData();
+                _selectedItems = new List<CountryDto>();
+            });
+        });
+    }
+
+    // -- Form Actions --
+
+    private string? GetFieldError(string fieldName) => _fieldErrors.TryGetValue(fieldName, out var error) ? error : null;
+
+    private void ClearFieldErrors()
+    {
+        _fieldErrors.Clear();
+    }
+
+    /// <summary>
+    /// Parses a "FieldName|message" error format.
+    /// Returns the field name and the clean display message.
+    /// </summary>
+    private static (string? FieldName, string Message) ParseFieldError(string errorMessage)
+    {
+        var pipeIndex = errorMessage.IndexOf('|');
+        if (pipeIndex > 0 && pipeIndex < 20) // field identifier should be short
+        {
+            return (errorMessage[..pipeIndex], errorMessage[(pipeIndex + 1)..]);
+        }
+        return (null, errorMessage);
+    }
+
+    private void SetFieldError(string errorMessage)
+    {
+        ClearFieldErrors();
+
+        var (fieldName, message) = ParseFieldError(errorMessage);
+        if (fieldName is null) return;
+
+        _fieldErrors[fieldName] = message;
+
+        // Auto-focus the field with the error
+        _ = fieldName switch
+        {
+            "Code" => _codeField?.FocusAsync(),
+            "Name" => _nameField?.FocusAsync(),
+            "Iso2Code" => _iso2Field?.FocusAsync(),
+            "Iso3Code" => _iso3Field?.FocusAsync(),
+            _ => null
+        };
+    }
+
+    private async Task SubmitForm()
+    {
+        if (_editModel is null) return;
+        _saving = true;
+        try
+        {
+            ClearFieldErrors();
+            await _form!.Validate();
+            if (!_form!.IsValid) return;
+
+            var result = await Mediator.Send(_editModel);
+            result.Match(
+                data =>
+                {
+                    _formVisible = false;
+                    Snackbar.Add(ConstantString.SaveSuccess, Severity.Info);
+                    return data;
+                },
+                errors =>
+                {
+                    SetFieldError(errors);
+                    var (_, cleanMessage) = ParseFieldError(errors);
+                    Snackbar.Add(cleanMessage, Severity.Error);
+                    return 0;
+                });
+            
+            // Only reload if successful (form is closed)
+            if (!_formVisible)
+            {
+                await LoadData();
+                _selectedItems = new List<CountryDto>();
+            }
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private async Task SaveAndNew()
+    {
+        if (_editModel is null) return;
+        _savingNew = true;
+        try
+        {
+            ClearFieldErrors();
+            await _form!.Validate();
+            if (!_form!.IsValid) return;
+
+            var result = await Mediator.Send(_editModel);
+            var success = result.Match(
+                data =>
+                {
+                    Snackbar.Add(ConstantString.SaveSuccess, Severity.Info);
+                    _editModel = new AddEditCountryCommand();
+                    ClearFieldErrors();
+                    return true;
+                },
+                errors =>
+                {
+                    SetFieldError(errors);
+                    var (_, cleanMessage) = ParseFieldError(errors);
+                    Snackbar.Add(cleanMessage, Severity.Error);
+                    return false;
+                });
+            
+            // Only reload if successful
+            if (success)
+            {
+                await LoadData();
+            }
+        }
+        finally
+        {
+            _savingNew = false;
+        }
+    }
+
+    private void CloseForm()
+    {
+        _formVisible = false;
+        _editModel = null;
+        ClearFieldErrors();
+    }
+}

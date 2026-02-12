@@ -17,4 +17,7 @@ app.ConfigureServer(builder.Configuration);
 
 await app.InitializeDatabaseAsync().ConfigureAwait(false);
 
+// Validate and log license information on startup
+app.ValidateLicenseOnStartup();
+
 await app.RunAsync().ConfigureAwait(false);

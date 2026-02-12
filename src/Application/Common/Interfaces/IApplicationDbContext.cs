@@ -15,25 +15,13 @@ public interface IApplicationDbContext
     DbSet<PicklistSet> PicklistSets { get; set; }
     DbSet<Product> Products { get; set; }
     DbSet<Tenant> Tenants { get; set; }
-    DbSet<Contact> Contacts { get; set; }
     ChangeTracker ChangeTracker { get; }
 
     DbSet<DataProtectionKey> DataProtectionKeys { get; set; }
 
-    // HIS - Master/Lookup Tables
-    DbSet<BloodGroup> BloodGroups { get; set; }
-    DbSet<MaritalStatus> MaritalStatuses { get; set; }
-    DbSet<City> Cities { get; set; }
-    DbSet<Country> Countries { get; set; }
-    DbSet<Nationality> Nationalities { get; set; }
-
-    // HIS - Foundation
+    // HIS - Foundation (moved to HIS.MasterData module)
     DbSet<Facility> Facilities { get; set; }
-    DbSet<Department> Departments { get; set; }
-    DbSet<Specialty> Specialties { get; set; }
-    DbSet<Location> Locations { get; set; }
     DbSet<Room> Rooms { get; set; }
-    DbSet<Bed> Beds { get; set; }
     DbSet<Staff> Staff { get; set; }
 
     // HIS - Patient

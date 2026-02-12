@@ -29,11 +29,7 @@ public class Patient : BaseAuditableSoftDeleteEntity, IMustHaveTenant
     public bool IsActive { get; set; } = true;
     public string TenantId { get; set; } = string.Empty;
 
-    public virtual Nationality? Nationality { get; set; }
-    public virtual BloodGroup? BloodGroup { get; set; }
-    public virtual MaritalStatus? MaritalStatus { get; set; }
-    public virtual City? City { get; set; }
-    public virtual Country? Country { get; set; }
+    // Navigation properties
     public virtual ICollection<PatientContact> Contacts { get; set; } = new HashSet<PatientContact>();
     public virtual ICollection<Visit> Visits { get; set; } = new HashSet<Visit>();
 

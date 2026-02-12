@@ -1,10 +1,12 @@
 ﻿@inject IStringLocalizer<SharedResource> L
 @inject LayoutService LayoutService
+@inject HIS.Core.Abstractions.IModuleLoader ModuleLoader
 
 <CascadingAuthenticationState>
-    <Router AppAssembly="@typeof(Program).Assembly" NotFoundPage="typeof(Pages.NotFound)">
+    <Router AppAssembly="@typeof(Program).Assembly" 
+            AdditionalAssemblies="@_additionalAssemblies">
         <Found Context="routeData">
-            <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)">
+            <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(AppLayout)">
                 <Authorizing>
                     <MudPaper Class="pa-6 text-center">
                         <MudProgressCircular Indeterminate="true" Color="Color.Primary" Size="Size.Large" Class="mb-4" />
@@ -27,5 +29,11 @@
 
 @code
 {
-
+    private System.Reflection.Assembly[] _additionalAssemblies = Array.Empty<System.Reflection.Assembly>();
+    
+    protected override void OnInitialized()
+    {
+        // Load module UI assemblies for routing
+        _additionalAssemblies = ModuleLoader.GetUIAssemblies().ToArray();
+    }
 }

@@ -15,25 +15,8 @@ public class TransferConfiguration : IEntityTypeConfiguration<Transfer>
             .HasForeignKey(x => x.VisitId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasOne(x => x.FromBed)
-            .WithMany()
-            .HasForeignKey(x => x.FromBedId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        builder.HasOne(x => x.ToBed)
-            .WithMany()
-            .HasForeignKey(x => x.ToBedId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        builder.HasOne(x => x.FromLocation)
-            .WithMany()
-            .HasForeignKey(x => x.FromLocationId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        builder.HasOne(x => x.ToLocation)
-            .WithMany()
-            .HasForeignKey(x => x.ToLocationId)
-            .OnDelete(DeleteBehavior.Restrict);
+        // Note: Bed and Location navigations removed - entities moved to MasterData module
+        // Foreign key relationships maintained via FromBedId, ToBedId, FromLocationId, ToLocationId
 
         builder.HasOne(x => x.OrderedByDoctor)
             .WithMany()

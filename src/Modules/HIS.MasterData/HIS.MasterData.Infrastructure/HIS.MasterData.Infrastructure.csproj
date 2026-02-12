@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\HIS.Core\HIS.Core.Abstractions\HIS.Core.Abstractions.csproj" />
+    <ProjectReference Include="..\..\HIS.Core\HIS.Core.Licensing\HIS.Core.Licensing.csproj" />
+    <ProjectReference Include="..\HIS.MasterData.Application\HIS.MasterData.Application.csproj" />
+    <ProjectReference Include="..\HIS.MasterData.Domain\HIS.MasterData.Domain.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.2" />
+  </ItemGroup>
+
+</Project>

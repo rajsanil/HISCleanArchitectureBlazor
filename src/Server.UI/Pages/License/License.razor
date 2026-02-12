@@ -1,0 +1,213 @@
+@page "/system/license"
+@using HIS.Core.Abstractions
+@using HIS.Core.Licensing
+@inject ILicenseService LicenseService
+@inject IModuleLoader ModuleLoader
+
+<PageTitle>License Information</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudStack Spacing="4">
+        <MudText Typo="Typo.h4">
+            <MudIcon Icon="@Icons.Material.Filled.VerifiedUser" Class="mr-2" />
+            License Information
+        </MudText>
+
+        @if (_licenseInfo == null)
+        {
+            <MudAlert Severity="Severity.Warning" Variant="Variant.Filled">
+                <strong>No valid license found!</strong> The system is running in development mode.
+            </MudAlert>
+        }
+        else
+        {
+            <!-- License Status Card -->
+            <MudCard>
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">License Status</MudText>
+                    </CardHeaderContent>
+                    <CardHeaderActions>
+                        @if (_daysUntilExpiration != null)
+                        {
+                            @if (_daysUntilExpiration.Value <= 30)
+                            {
+                                <MudChip T="string" Color="Color.Warning" Icon="@Icons.Material.Filled.Warning">
+                                    Expires in @_daysUntilExpiration.Value days
+                                </MudChip>
+                            }
+                            else if (_daysUntilExpiration.Value < 0)
+                            {
+                                <MudChip T="string" Color="Color.Error" Icon="@Icons.Material.Filled.Error">
+                                    Expired
+                                </MudChip>
+                            }
+                            else
+                            {
+                                <MudChip T="string" Color="Color.Success" Icon="@Icons.Material.Filled.CheckCircle">
+                                    Active
+                                </MudChip>
+                            }
+                        }
+                    </CardHeaderActions>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudGrid>
+                        <MudItem xs="12" md="6">
+                            <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Customer</MudText>
+                            <MudText Typo="Typo.body1" Class="mb-3">@_licenseInfo.CustomerName</MudText>
+
+                            <MudText Typo="Typo.subtitle2" Color="Color.Secondary">License Type</MudText>
+                            <MudText Typo="Typo.body1" Class="mb-3">
+                                <MudChip T="string" Size="Size.Small" Color="GetLicenseTypeColor()">
+                                    @_licenseInfo.LicenseType
+                                </MudChip>
+                            </MudText>
+
+                            <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Maximum Users</MudText>
+                            <MudText Typo="Typo.body1" Class="mb-3">@_licenseInfo.MaxUsers</MudText>
+                        </MudItem>
+                        <MudItem xs="12" md="6">
+                            <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Issued Date</MudText>
+                            <MudText Typo="Typo.body1" Class="mb-3">@_licenseInfo.IssuedDate?.ToString("yyyy-MM-dd HH:mm:ss UTC") ?? "N/A"</MudText>
+
+                            <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Expiration Date</MudText>
+                            <MudText Typo="Typo.body1" Class="mb-3">@_licenseInfo.ExpiryDate?.ToString("yyyy-MM-dd HH:mm:ss UTC") ?? "Never"</MudText>
+                        </MudItem>
+                    </MudGrid>
+                </MudCardContent>
+            </MudCard>
+
+            <!-- Licensed Modules Card -->
+            <MudCard>
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Licensed Modules (@_licenseInfo.LicensedModules.Count)</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudGrid>
+                        @foreach (var module in _licenseInfo.LicensedModules)
+                        {
+                            <MudItem xs="12" sm="6" md="4" lg="3">
+                                <MudChip T="string" Icon="@Icons.Material.Filled.CheckCircle" 
+                                        Color="Color.Success" 
+                                        Variant="Variant.Outlined">
+                                    @module.Replace("HIS.", "")
+                                </MudChip>
+                            </MudItem>
+                        }
+                    </MudGrid>
+                </MudCardContent>
+            </MudCard>
+        }
+
+        <!-- Active Modules Card -->
+        <MudCard>
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudText Typo="Typo.h6">Active Modules (@_activeModules.Count())</MudText>
+                </CardHeaderContent>
+            </MudCardHeader>
+            <MudCardContent>
+                <MudTable Items="_activeModules" Hover="true" Dense="true" Striped="true">
+                    <HeaderContent>
+                        <MudTh>Module ID</MudTh>
+                        <MudTh>Display Name</MudTh>
+                        <MudTh>Version</MudTh>
+                        <MudTh>Dependencies</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="Module ID">
+                            <MudChip T="string" Size="Size.Small" Color="Color.Primary">@context.ModuleId</MudChip>
+                        </MudTd>
+                        <MudTd DataLabel="Display Name">@context.DisplayName</MudTd>
+                        <MudTd DataLabel="Version">@context.Version</MudTd>
+                        <MudTd DataLabel="Dependencies">
+                            @if (context.Dependencies?.Any() == true)
+                            {
+                                <MudText Typo="Typo.caption">@string.Join(", ", context.Dependencies)</MudText>
+                            }
+                            else
+                            {
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">None</MudText>
+                            }
+                        </MudTd>
+                    </RowTemplate>
+                </MudTable>
+            </MudCardContent>
+        </MudCard>
+
+        <!-- License Validation Section -->
+        @if (_licenseInfo != null)
+        {
+            <MudCard>
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Signature Validation</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudAlert Severity="Severity.Success" Variant="Variant.Outlined">
+                        <MudStack Row="true" AlignItems="AlignItems.Center">
+                            <MudIcon Icon="@Icons.Material.Filled.VerifiedUser" />
+                            <MudText>License signature is valid and trusted</MudText>
+                        </MudStack>
+                    </MudAlert>
+                    <MudText Typo="Typo.caption" Class="mt-2" Color="Color.Secondary">
+                        This license has been cryptographically verified using RSA-2048 digital signature.
+                        Any tampering or modification will be detected.
+                    </MudText>
+                </MudCardContent>
+            </MudCard>
+        }
+
+        <!-- Help Section -->
+        <MudCard>
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudText Typo="Typo.h6">Need Help?</MudText>
+                </CardHeaderContent>
+            </MudCardHeader>
+            <MudCardContent>
+                <MudText Typo="Typo.body2" Class="mb-2">
+                    To upgrade your license or add additional modules, please contact support.
+                </MudText>
+                <MudButton Variant="Variant.Outlined" 
+                          Color="Color.Primary" 
+                          StartIcon="@Icons.Material.Filled.ContactSupport">
+                    Contact Support
+                </MudButton>
+            </MudCardContent>
+        </MudCard>
+    </MudStack>
+</MudContainer>
+
+@code {
+    private LicenseInfo? _licenseInfo;
+    private IEnumerable<IHisModule> _activeModules = Enumerable.Empty<IHisModule>();
+    private int? _daysUntilExpiration;
+
+    protected override void OnInitialized()
+    {
+        _licenseInfo = LicenseService.GetLicenseInfo();
+        _activeModules = ModuleLoader.GetActiveModules();
+        
+        if (_licenseInfo != null)
+        {
+            _daysUntilExpiration = LicenseService.GetDaysUntilExpiration();
+        }
+    }
+
+    private Color GetLicenseTypeColor()
+    {
+        return _licenseInfo?.LicenseType switch
+        {
+            "Production" => Color.Success,
+            "Trial" => Color.Warning,
+            "Development" => Color.Info,
+            "Education" => Color.Secondary,
+            _ => Color.Default
+        };
+    }
+}

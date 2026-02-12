@@ -4,6 +4,7 @@ using System.Reflection;
 using CleanArchitecture.Blazor.Domain.Identity;
 using CleanArchitecture.Blazor.Infrastructure.Constants.ClaimTypes;
 using CleanArchitecture.Blazor.Infrastructure.PermissionSet;
+using HIS.MasterData.Infrastructure.Permissions;
 using Microsoft.AspNetCore.Identity;
 using System.Security.Claims;
 using ZiggyCreatures.Caching.Fusion;
@@ -46,8 +47,9 @@ public class PermissionHelper
     {
         var assignedClaims = await GetUserClaimsByUserId(userId).ConfigureAwait(false);
         IList<PermissionModel> allPermissions = new List<PermissionModel>();
+        
+        // Get core permissions
         var modules = typeof(Permissions).GetNestedTypes();
-
         foreach (var module in modules)
         {
             var moduleName = module.GetCustomAttributes<DisplayNameAttribute>().FirstOrDefault()?.DisplayName ?? string.Empty;
@@ -70,6 +72,35 @@ public class PermissionHelper
                     Group = moduleName,
                     Name = name, // Assigning the field name
                     HelpText = helpText, // Assigning the description as HelpText
+                    Description = moduleDescription,
+                    Assigned = assignedClaims.Any(x => x.Value.Equals(claimValue))
+                };
+            }).Where(pm => !string.IsNullOrEmpty(pm.ClaimValue))).ToList();
+        }
+        
+        // Get MasterData module permissions
+        var masterDataModules = typeof(MasterDataPermissions).GetNestedTypes();
+        foreach (var module in masterDataModules)
+        {
+            var moduleName = module.GetCustomAttributes<DisplayNameAttribute>().FirstOrDefault()?.DisplayName ?? string.Empty;
+            var moduleDescription = module.GetCustomAttributes<DescriptionAttribute>().FirstOrDefault()?.Description ?? string.Empty;
+            var fields = module.GetFields(BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy);
+
+            allPermissions = allPermissions.Concat(fields.Select(field =>
+            {
+                var claimValue = field.GetValue(null)?.ToString();
+                var name = System.Text.RegularExpressions.Regex.Replace(field.Name, "(\\B[A-Z])", " $1").Trim().ToLower();
+                name = char.ToUpper(name[0]) + name.Substring(1);
+                var helpText = field.GetCustomAttributes<DescriptionAttribute>().FirstOrDefault()?.Description ?? string.Empty;
+
+                return new PermissionModel
+                {
+                    UserId = userId,
+                    ClaimValue = claimValue ?? string.Empty,
+                    ClaimType = ApplicationClaimTypes.Permission,
+                    Group = moduleName,
+                    Name = name,
+                    HelpText = helpText,
                     Description = moduleDescription,
                     Assigned = assignedClaims.Any(x => x.Value.Equals(claimValue))
                 };
@@ -118,8 +149,9 @@ public class PermissionHelper
     {
         var assignedClaims = await GetUserClaimsByRoleId(roleId).ConfigureAwait(false);
         IList<PermissionModel> allPermissions = new List<PermissionModel>();
+        
+        // Get core permissions
         var modules = typeof(Permissions).GetNestedTypes();
-
         foreach (var module in modules)
         {
             var moduleName = module.GetCustomAttributes<DisplayNameAttribute>().FirstOrDefault()?.DisplayName ?? string.Empty;
@@ -142,6 +174,35 @@ public class PermissionHelper
                     Group = moduleName,
                     Name = name, // Assigning the field name
                     HelpText = helpText, // Assigning the description as HelpText
+                    Description = moduleDescription,
+                    Assigned = assignedClaims.Any(x => x.Value.Equals(claimValue))
+                };
+            }).Where(pm => !string.IsNullOrEmpty(pm.ClaimValue))).ToList();
+        }
+        
+        // Get MasterData module permissions
+        var masterDataModules = typeof(MasterDataPermissions).GetNestedTypes();
+        foreach (var module in masterDataModules)
+        {
+            var moduleName = module.GetCustomAttributes<DisplayNameAttribute>().FirstOrDefault()?.DisplayName ?? string.Empty;
+            var moduleDescription = module.GetCustomAttributes<DescriptionAttribute>().FirstOrDefault()?.Description ?? string.Empty;
+            var fields = module.GetFields(BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy);
+
+            allPermissions = allPermissions.Concat(fields.Select(field =>
+            {
+                var claimValue = field.GetValue(null)?.ToString();
+                var name = System.Text.RegularExpressions.Regex.Replace(field.Name, "(\\B[A-Z])", " $1").Trim().ToLower();
+                name = char.ToUpper(name[0]) + name.Substring(1);
+                var helpText = field.GetCustomAttributes<DescriptionAttribute>().FirstOrDefault()?.Description ?? string.Empty;
+
+                return new PermissionModel
+                {
+                    RoleId = roleId,
+                    ClaimValue = claimValue ?? string.Empty,
+                    ClaimType = ApplicationClaimTypes.Permission,
+                    Group = moduleName,
+                    Name = name,
+                    HelpText = helpText,
                     Description = moduleDescription,
                     Assigned = assignedClaims.Any(x => x.Value.Equals(claimValue))
                 };

@@ -1,14 +1,28 @@
 ﻿using CleanArchitecture.Blazor.Infrastructure.Constants.Role;
 using CleanArchitecture.Blazor.Server.UI.Models.NavigationMenu;
+using HIS.Core.Abstractions;
+using PageStatus = CleanArchitecture.Blazor.Server.UI.Models.NavigationMenu.PageStatus;
 
 namespace CleanArchitecture.Blazor.Server.UI.Services.Navigation;
 
 public class MenuService : IMenuService
 {
-    private readonly List<MenuSectionModel> _features = new()
+    private readonly IModuleLoader _moduleLoader;
+    private readonly List<MenuSectionModel> _features;
+
+    public MenuService(IModuleLoader moduleLoader)
     {
-        new MenuSectionModel
+        _moduleLoader = moduleLoader;
+        _features = BuildFeatures();
+    }
+
+    private List<MenuSectionModel> BuildFeatures()
+    {
+        return new List<MenuSectionModel>
         {
+            // Application Section (hardcoded)
+            new MenuSectionModel
+            {
             Title = "Application",
             SectionItems = new List<MenuSectionItemModel>
             {
@@ -79,152 +93,11 @@ public class MenuService : IMenuService
                     PageStatus = PageStatus.ComingSoon
                 }
             }
-        },
-        new MenuSectionModel
-        {
-            Title = "Hospital",
-            Roles = new[] { RoleName.Admin, RoleName.Users },
-            SectionItems = new List<MenuSectionItemModel>
-            {
-                new()
-                {
-                    IsParent = true,
-                    Title = "Foundation",
-                    Icon = Icons.Material.Filled.Business,
-                    PageStatus = PageStatus.Completed,
-                    MenuItems = new List<MenuSectionSubItemModel>
-                    {
-                        new()
-                        {
-                            Title = "Facilities",
-                            Href = "/pages/facilities",
-                            PageStatus = PageStatus.Completed
-                        },
-                        new()
-                        {
-                            Title = "Departments",
-                            Href = "/pages/departments",
-                            PageStatus = PageStatus.Completed
-                        },
-                        new()
-                        {
-                            Title = "Specialties",
-                            Href = "/pages/specialties",
-                            PageStatus = PageStatus.Completed
-                        },
-                        new()
-                        {
-                            Title = "Locations",
-                            Href = "/pages/locations",
-                            PageStatus = PageStatus.Completed
-                        },
-                        new()
-                        {
-                            Title = "Rooms",
-                            Href = "/pages/rooms",
-                            PageStatus = PageStatus.Completed
-                        },
-                        new()
-                        {
-                            Title = "Beds",
-                            Href = "/pages/beds",
-                            PageStatus = PageStatus.Completed
-                        },
-                        new()
-                        {
-                            Title = "Staff",
-                            Href = "/pages/staff",
-                            PageStatus = PageStatus.Completed
-                        }
-                    }
-                },
-                new()
-                {
-                    IsParent = true,
-                    Title = "Patient Management",
-                    Icon = Icons.Material.Filled.People,
-                    PageStatus = PageStatus.Completed,
-                    MenuItems = new List<MenuSectionSubItemModel>
-                    {
-                        new()
-                        {
-                            Title = "Patients",
-                            Href = "/pages/patients",
-                            PageStatus = PageStatus.Completed
-                        },
-                        new()
-                        {
-                            Title = "Visits",
-                            Href = "/pages/visits",
-                            PageStatus = PageStatus.Completed
-                        }
-                    }
-                },
-                new()
-                {
-                    IsParent = true,
-                    Title = "Clinical",
-                    Icon = Icons.Material.Filled.MedicalServices,
-                    PageStatus = PageStatus.Completed,
-                    MenuItems = new List<MenuSectionSubItemModel>
-                    {
-                        new()
-                        {
-                            Title = "Encounters",
-                            Href = "/pages/encounters",
-                            PageStatus = PageStatus.Completed
-                        },
-                        new()
-                        {
-                            Title = "Bed Board",
-                            Href = "/pages/bedboard",
-                            PageStatus = PageStatus.Completed
-                        }
-                    }
-                },
-                new()
-                {
-                    IsParent = true,
-                    Title = "Master Data",
-                    Icon = Icons.Material.Filled.Dataset,
-                    PageStatus = PageStatus.Completed,
-                    MenuItems = new List<MenuSectionSubItemModel>
-                    {
-                        new()
-                        {
-                            Title = "Countries",
-                            Href = "/pages/countries",
-                            PageStatus = PageStatus.Completed
-                        },
-                        new()
-                        {
-                            Title = "Cities",
-                            Href = "/pages/cities",
-                            PageStatus = PageStatus.Completed
-                        },
-                        new()
-                        {
-                            Title = "Nationalities",
-                            Href = "/pages/nationalities",
-                            PageStatus = PageStatus.Completed
-                        },
-                        new()
-                        {
-                            Title = "Blood Groups",
-                            Href = "/pages/bloodgroups",
-                            PageStatus = PageStatus.Completed
-                        },
-                        new()
-                        {
-                            Title = "Marital Statuses",
-                            Href = "/pages/maritalstatuses",
-                            PageStatus = PageStatus.Completed
-                        }
-                    }
-                }
-            }
-        },
-        new MenuSectionModel
+            },
+            // Hospital Section (dynamically built from modules)
+            BuildHospitalSection(),
+            // MANAGEMENT Section (hardcoded)
+            new MenuSectionModel
         {
             Title = "MANAGEMENT",
             Roles = new[] { RoleName.Admin },
@@ -272,6 +145,12 @@ public class MenuService : IMenuService
                     {
                         new()
                         {
+                            Title = "License",
+                            Href = "/system/license",
+                            PageStatus = PageStatus.Completed
+                        },
+                        new()
+                        {
                             Title = "Picklist",
                             Href = "/system/picklistset",
                             PageStatus = PageStatus.Completed
@@ -299,7 +178,89 @@ public class MenuService : IMenuService
                 }
             }
         }
-    };
+        };
+    }
+
+    /// <summary>
+    /// Builds the Hospital menu section dynamically from active licensed modules.
+    /// </summary>
+    private MenuSectionModel BuildHospitalSection()
+    {
+        var hospitalSection = new MenuSectionModel
+        {
+            Title = "Hospital",
+            Roles = new[] { RoleName.Admin, RoleName.Users },
+            SectionItems = new List<MenuSectionItemModel>()
+        };
+
+        // Get all active modules and their menu contributions
+        var activeModules = _moduleLoader.GetActiveModules();
+        
+        foreach (var module in activeModules)
+        {
+            var menuSections = module.GetMenuSections();
+            
+            foreach (var moduleSection in menuSections)
+            {
+                // Each ModuleMenuSection becomes a parent MenuSectionItemModel
+                var sectionItem = new MenuSectionItemModel
+                {
+                    Title = moduleSection.Title,
+                    Icon = GetIconForSection(moduleSection.Title),
+                    IsParent = true,
+                    Roles = moduleSection.Roles,
+                    PageStatus = PageStatus.Completed,
+                    MenuItems = new List<MenuSectionSubItemModel>()
+                };
+
+                // Convert module menu items to sub-items
+                foreach (var item in moduleSection.Items)
+                {
+                    // Simple menu item - add to section
+                    sectionItem.MenuItems.Add(new MenuSectionSubItemModel
+                    {
+                        Title = item.Title,
+                        Href = item.Href,
+                        Roles = item.Roles,
+                        PageStatus = item.PageStatus.HasValue 
+                            ? (PageStatus)(int)item.PageStatus.Value 
+                            : PageStatus.Completed
+                    });
+                }
+
+                hospitalSection.SectionItems.Add(sectionItem);
+            }
+        }
+
+        return hospitalSection;
+    }
+
+    /// <summary>
+    /// Maps module section titles to Material Design icons.
+    /// </summary>
+    private static string GetIconForSection(string sectionTitle)
+    {
+        return sectionTitle switch
+        {
+            "Medical Business Setup" => Icons.Material.Filled.BusinessCenter,
+            "Master Data" => Icons.Material.Filled.Dataset,
+            "Foundation" => Icons.Material.Filled.Business,
+            "Patient Management" => Icons.Material.Filled.People,
+            "Outpatient" => Icons.Material.Filled.LocalHospital,
+            "Inpatient" => Icons.Material.Filled.Hotel,
+            "Emergency" => Icons.Material.Filled.Emergency,
+            "Clinical" => Icons.Material.Filled.MedicalServices,
+            "Laboratory" => Icons.Material.Filled.Science,
+            "Radiology" => Icons.Material.Filled.Biotech,
+            "Pharmacy" => Icons.Material.Filled.LocalPharmacy,
+            "Nursing" => Icons.Material.Filled.HealthAndSafety,
+            "Inventory" => Icons.Material.Filled.Inventory,
+            "Insurance" => Icons.Material.Filled.AssuredWorkload,
+            "MRD" => Icons.Material.Filled.Folder,
+            "Support" => Icons.Material.Filled.Support,
+            _ => Icons.Material.Filled.Category
+        };
+    }
 
     public IEnumerable<MenuSectionModel> Features => _features;
 }

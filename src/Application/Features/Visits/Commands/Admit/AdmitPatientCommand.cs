@@ -1,5 +1,4 @@
 using CleanArchitecture.Blazor.Application.Features.Visits.Caching;
-using CleanArchitecture.Blazor.Application.Features.Beds.Caching;
 
 namespace CleanArchitecture.Blazor.Application.Features.Visits.Commands.Admit;
 
@@ -17,7 +16,7 @@ public class AdmitPatientCommand : ICacheInvalidatorRequest<Result<int>>
     public DateTime? ExpectedDischargeDate { get; set; }
 
     public string CacheKey => VisitCacheKey.GetAllCacheKey;
-    public IEnumerable<string>? Tags => VisitCacheKey.Tags?.Concat(BedCacheKey.Tags ?? Enumerable.Empty<string>());
+    public IEnumerable<string>? Tags => VisitCacheKey.Tags; // TODO: Add BedCacheKey.Tags when cross-module caching is implemented
 }
 
 public class AdmitPatientCommandValidator : AbstractValidator<AdmitPatientCommand>
@@ -50,12 +49,12 @@ public class AdmitPatientCommandHandler : IRequestHandler<AdmitPatientCommand, R
         if (visit.VisitStatus == "Discharged" || visit.VisitStatus == "Cancelled")
             return await Result<int>.FailureAsync($"Cannot admit patient. Visit status is '{visit.VisitStatus}'.");
 
-        // Verify bed availability
-        var bed = await _context.Beds.SingleOrDefaultAsync(b => b.Id == request.BedId, cancellationToken);
-        if (bed == null)
-            return await Result<int>.FailureAsync($"Bed with id: [{request.BedId}] not found.");
-        if (bed.BedStatus != "Available")
-            return await Result<int>.FailureAsync($"Bed '{bed.Code}' is not available. Current status: {bed.BedStatus}");
+        // TODO: Verify bed availability - requires cross-module communication with MasterData module
+        // var bed = await _context.Beds.SingleOrDefaultAsync(b => b.Id == request.BedId, cancellationToken);
+        // if (bed == null)
+        //     return await Result<int>.FailureAsync($"Bed with id: [{request.BedId}] not found.");
+        // if (bed.BedStatus != "Available")
+        //     return await Result<int>.FailureAsync($"Bed '{bed.Code}' is not available. Current status: {bed.BedStatus}");
 
         // Create admission record
         var admission = new Admission
@@ -73,9 +72,9 @@ public class AdmitPatientCommandHandler : IRequestHandler<AdmitPatientCommand, R
         admission.AddDomainEvent(new CreatedEvent<Admission>(admission));
         _context.Admissions.Add(admission);
 
-        // Update bed status
-        bed.BedStatus = "Occupied";
-        bed.AddDomainEvent(new UpdatedEvent<Bed>(bed));
+        // TODO: Update bed status - requires cross-module communication with MasterData module
+        // bed.BedStatus = "Occupied";
+        // bed.AddDomainEvent(new UpdatedEvent<Bed>(bed));
 
         // Update visit status
         visit.VisitStatus = "Admitted";

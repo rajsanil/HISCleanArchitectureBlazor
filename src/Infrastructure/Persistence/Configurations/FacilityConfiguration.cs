@@ -18,5 +18,6 @@ public class FacilityConfiguration : IEntityTypeConfiguration<Facility>
         builder.HasIndex(x => x.Code)
             .IsUnique()
             .HasFilter("[Deleted] IS NULL");
+        builder.ToTable("Facilities");
     }
 }

@@ -20,6 +20,9 @@ using CleanArchitecture.Blazor.Infrastructure.Services.MultiTenant;
 using CleanArchitecture.Blazor.Infrastructure.Services.OpenAI;
 using CleanArchitecture.Blazor.Infrastructure.Services.Serialization;
 using FluentEmail.MailKitSmtp;
+using HIS.Core.Licensing;
+using HIS.Core.Infrastructure;
+using HIS.MasterData.Infrastructure.Permissions;
 using Microsoft.AspNetCore.Components.Server.Circuits;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -50,6 +53,13 @@ public static class DependencyInjection
         IConfiguration configuration)
     {
         services.AddSettings(configuration)
+            .AddLicensing(options =>
+            {
+                options.LicenseFilePath = configuration["License:FilePath"] ?? "license.json";
+                options.AllowUnlicensed = configuration.GetValue<bool>("License:AllowUnlicensed", true); // Allow unlicensed in dev
+            })
+            .AddModuleInfrastructure()
+            .AddHisModules(configuration)
             .AddDatabase(configuration)
             .AddServices()
             .AddMessageServices(configuration);
@@ -62,6 +72,25 @@ public static class DependencyInjection
 
         services.AddSingleton<IUsersStateContainer, UsersStateContainer>();
         services.AddScoped<IScopedMediator, ScopedMediator>();
+        return services;
+    }
+
+    private static IServiceCollection AddHisModules(this IServiceCollection services, IConfiguration configuration)
+    {
+        // Build a temporary service provider to get the module loader
+        var sp = services.BuildServiceProvider();
+        var moduleLoader = sp.GetRequiredService<HIS.Core.Abstractions.IModuleLoader>();
+        
+        var activeModules = moduleLoader.GetActiveModules();
+        
+        // Configure services for each active module
+        foreach (var module in activeModules)
+        {
+            module.ConfigureDomainServices(services);
+            module.ConfigureApplicationServices(services);
+            module.ConfigureInfrastructureServices(services, configuration);
+        }
+        
         return services;
     }
 
@@ -104,6 +133,8 @@ public static class DependencyInjection
 
         services.AddScoped<IDbContextFactory<ApplicationDbContext>, BlazorContextFactory<ApplicationDbContext>>();
         services.AddScoped<IApplicationDbContext>(provider =>
+            provider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>().CreateDbContext());
+        services.AddScoped<HIS.MasterData.Application.Common.Interfaces.IMasterDataDbContext>(provider =>
             provider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>().CreateDbContext());
         services.AddScoped<ApplicationDbContextInitializer>();
 
@@ -263,8 +294,19 @@ public static class DependencyInjection
             .AddAuthorizationCore(options =>
             {
                 options.AddPolicy("CanPurge", policy => policy.RequireUserName(UserName.Administrator));
-                // Here I stored necessary permissions/roles in a constant
+                
+                // Register core permissions
                 foreach (var prop in typeof(Permissions).GetNestedTypes().SelectMany(c =>
+                             c.GetFields(BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy)))
+                {
+                    var propertyValue = prop.GetValue(null);
+                    if (propertyValue is not null)
+                        options.AddPolicy((string)propertyValue,
+                            policy => policy.RequireClaim(ApplicationClaimTypes.Permission, (string)propertyValue));
+                }
+                
+                // Register MasterData module permissions
+                foreach (var prop in typeof(MasterDataPermissions).GetNestedTypes().SelectMany(c =>
                              c.GetFields(BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy)))
                 {
                     var propertyValue = prop.GetValue(null);

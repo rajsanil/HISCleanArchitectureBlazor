@@ -25,31 +25,7 @@ public class PatientConfiguration : IEntityTypeConfiguration<Patient>
         builder.Property(x => x.TenantId).HasMaxLength(450).IsRequired();
         builder.Property(x => x.IsActive).HasDefaultValue(true);
 
-        builder.HasOne(x => x.Nationality)
-            .WithMany()
-            .HasForeignKey(x => x.NationalityId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        builder.HasOne(x => x.BloodGroup)
-            .WithMany()
-            .HasForeignKey(x => x.BloodGroupId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        builder.HasOne(x => x.MaritalStatus)
-            .WithMany()
-            .HasForeignKey(x => x.MaritalStatusId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        builder.HasOne(x => x.City)
-            .WithMany()
-            .HasForeignKey(x => x.CityId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        builder.HasOne(x => x.Country)
-            .WithMany()
-            .HasForeignKey(x => x.CountryId)
-            .OnDelete(DeleteBehavior.Restrict);
-
+        // Indexes
         builder.HasIndex(x => x.MRN)
             .IsUnique()
             .HasFilter("[Deleted] IS NULL");

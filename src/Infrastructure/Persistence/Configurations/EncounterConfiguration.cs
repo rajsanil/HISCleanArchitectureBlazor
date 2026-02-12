@@ -26,15 +26,5 @@ public class EncounterConfiguration : IEntityTypeConfiguration<Encounter>
             .WithMany()
             .HasForeignKey(x => x.DoctorId)
             .OnDelete(DeleteBehavior.Restrict);
-
-        builder.HasOne(x => x.Department)
-            .WithMany()
-            .HasForeignKey(x => x.DepartmentId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        builder.HasOne(x => x.Location)
-            .WithMany()
-            .HasForeignKey(x => x.LocationId)
-            .OnDelete(DeleteBehavior.Restrict);
     }
 }

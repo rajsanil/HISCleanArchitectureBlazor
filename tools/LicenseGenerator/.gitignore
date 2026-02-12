@@ -1,0 +1,13 @@
+# CRITICAL: Never commit private keys!
+license_private_key.xml
+*.pfx
+*.p12
+
+# Generated license files (for testing)
+license_*.json
+
+# Build outputs
+bin/
+obj/
+*.user
+*.suo

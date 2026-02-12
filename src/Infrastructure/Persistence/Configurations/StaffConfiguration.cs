@@ -23,16 +23,6 @@ public class StaffConfiguration : IEntityTypeConfiguration<Staff>
             .HasForeignKey(x => x.ApplicationUserId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasOne(x => x.Department)
-            .WithMany()
-            .HasForeignKey(x => x.DepartmentId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        builder.HasOne(x => x.Specialty)
-            .WithMany()
-            .HasForeignKey(x => x.SpecialtyId)
-            .OnDelete(DeleteBehavior.Restrict);
-
         builder.HasIndex(x => x.EmployeeCode)
             .IsUnique()
             .HasFilter("[Deleted] IS NULL");

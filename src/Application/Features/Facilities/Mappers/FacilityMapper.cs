@@ -13,6 +13,7 @@ public static partial class FacilityMapper
     public static partial Facility FromEditCommand(AddEditFacilityCommand command);
     public static partial void ApplyChangesFrom(AddEditFacilityCommand command, Facility facility);
     [MapperIgnoreSource(nameof(FacilityDto.Id))]
+    [MapperIgnoreSource(nameof(FacilityDto.TenantId))]
     public static partial AddEditFacilityCommand CloneFromDto(FacilityDto dto);
     public static partial AddEditFacilityCommand ToEditCommand(FacilityDto dto);
     public static partial IQueryable<FacilityDto> ProjectTo(this IQueryable<Facility> q);

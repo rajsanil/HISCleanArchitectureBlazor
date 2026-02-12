@@ -1,5 +1,4 @@
 using CleanArchitecture.Blazor.Application.Features.Visits.Caching;
-using CleanArchitecture.Blazor.Application.Features.Beds.Caching;
 
 namespace CleanArchitecture.Blazor.Application.Features.Visits.Commands.Cancel;
 
@@ -12,7 +11,7 @@ public class CancelVisitCommand : ICacheInvalidatorRequest<Result<int>>
     public string CancellationReason { get; set; } = string.Empty;
 
     public string CacheKey => VisitCacheKey.GetAllCacheKey;
-    public IEnumerable<string>? Tags => VisitCacheKey.Tags?.Concat(BedCacheKey.Tags ?? Enumerable.Empty<string>());
+    public IEnumerable<string>? Tags => VisitCacheKey.Tags; // TODO: Add BedCacheKey.Tags when cross-module caching is implemented
 }
 
 public class CancelVisitCommandValidator : AbstractValidator<CancelVisitCommand>
@@ -42,16 +41,16 @@ public class CancelVisitCommandHandler : IRequestHandler<CancelVisitCommand, Res
         if (visit.VisitStatus == "Cancelled")
             return await Result<int>.FailureAsync("Visit is already cancelled.");
 
-        // Release bed if admitted
-        if (visit.Admission != null)
-        {
-            var bed = await _context.Beds.SingleOrDefaultAsync(b => b.Id == visit.Admission.BedId, cancellationToken);
-            if (bed != null)
-            {
-                bed.BedStatus = "Available";
-                bed.AddDomainEvent(new UpdatedEvent<Bed>(bed));
-            }
-        }
+        // TODO: Release bed if admitted - requires cross-module communication with MasterData module
+        // if (visit.Admission != null)
+        // {
+        //     var bed = await _context.Beds.SingleOrDefaultAsync(b => b.Id == visit.Admission.BedId, cancellationToken);
+        //     if (bed != null)
+        //     {
+        //         bed.BedStatus = "Available";
+        //         bed.AddDomainEvent(new UpdatedEvent<Bed>(bed));
+        //     }
+        // }
 
         visit.VisitStatus = "Cancelled";
         visit.AddDomainEvent(new UpdatedEvent<Visit>(visit));

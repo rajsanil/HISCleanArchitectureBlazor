@@ -4,6 +4,7 @@ using CleanArchitecture.Blazor.Infrastructure.Constants.ClaimTypes;
 using CleanArchitecture.Blazor.Infrastructure.Constants.Role;
 using CleanArchitecture.Blazor.Infrastructure.Constants.User;
 using CleanArchitecture.Blazor.Infrastructure.PermissionSet;
+using HIS.MasterData.Infrastructure.Permissions;
 
 namespace CleanArchitecture.Blazor.Infrastructure.Persistence;
 
@@ -58,19 +59,28 @@ public class ApplicationDbContextInitializer
     private static IEnumerable<string> GetAllPermissions()
     {
         var allPermissions = new List<string>();
-        var modules = typeof(Permissions).GetNestedTypes();
-
-        foreach (var module in modules)
+        
+        // Get core permissions
+        var coreModules = typeof(Permissions).GetNestedTypes();
+        foreach (var module in coreModules)
         {
-            var moduleName = string.Empty;
-            var moduleDescription = string.Empty;
-
             var fields = module.GetFields(BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy);
-
             foreach (var fi in fields)
             {
                 var propertyValue = fi.GetValue(null);
-
+                if (propertyValue is not null)
+                    allPermissions.Add((string)propertyValue);
+            }
+        }
+        
+        // Get MasterData module permissions
+        var masterDataModules = typeof(MasterDataPermissions).GetNestedTypes();
+        foreach (var module in masterDataModules)
+        {
+            var fields = module.GetFields(BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy);
+            foreach (var fi in fields)
+            {
+                var propertyValue = fi.GetValue(null);
                 if (propertyValue is not null)
                     allPermissions.Add((string)propertyValue);
             }

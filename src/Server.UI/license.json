@@ -1,0 +1,27 @@
+{
+  "customer": "Canadian Specialist Hospital",
+  "issued": "2026-02-09T17:14:43.1082683Z",
+  "expires": "2027-02-09T17:14:11.3181105Z",
+  "maxUsers": 50,
+  "modules": [
+    "HIS.Core",
+    "HIS.MasterData",
+    "HIS.Foundation",
+    "HIS.Patient",
+    "HIS.Outpatient",
+    "HIS.Inpatient",
+    "HIS.Emergency",
+    "HIS.Clinical",
+    "HIS.Laboratory",
+    "HIS.Radiology",
+    "HIS.Pharmacy",
+    "HIS.Nursing",
+    "HIS.Inventory",
+    "HIS.Insurance",
+    "HIS.MRD",
+    "HIS.Support"
+  ],
+  "organizationId": null,
+  "licenseType": "Production",
+  "signature": "tVAS80gKsp8TK2nXfiHlftLkkJ9\u002BtwnG2SBQECxaeA9tdxzcMLjgq1\u002BbpYDHa0JtBRtD2Yu/79If1MjX4o6UVX3n3x/QuO0Cc4koQO2iOG6oYpxUCaDgMQcLbu2Z7O8bGR2Yy0aRFG3tFI43vJQRCIUohaY585uKY8XuRfDxksVqBdanZspfofb1wqY238EFzH879d14C7i0vyLnoR8swKtPO50bnYUJmVv9ogZviCtsWO8gdfGFdAaQ1KF4qc906/EM\u002Bn05RmkTd6u\u002B3BSJfhtVzWg/FtK53bQHrV80LJXZlGyJ8Eq7mQXEgdD7IjAnTjT7TD1GA16H7M3POxpsIg=="
+}

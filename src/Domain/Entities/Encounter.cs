@@ -19,6 +19,4 @@ public class Encounter : BaseAuditableSoftDeleteEntity, IMustHaveTenant
 
     public virtual Visit? Visit { get; set; }
     public virtual Staff? Doctor { get; set; }
-    public virtual Department? Department { get; set; }
-    public virtual Location? Location { get; set; }
 }

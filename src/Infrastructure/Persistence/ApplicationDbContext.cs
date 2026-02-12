@@ -4,7 +4,11 @@
 using System.Reflection;
 using CleanArchitecture.Blazor.Domain.Common.Entities;
 using CleanArchitecture.Blazor.Domain.Identity;
+using HIS.Core.Abstractions;
+using HIS.MasterData.Application.Common.Interfaces;
+using HIS.MasterData.Domain.Entities;
 using Microsoft.AspNetCore.DataProtection.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace CleanArchitecture.Blazor.Infrastructure.Persistence;
 
@@ -12,37 +16,50 @@ namespace CleanArchitecture.Blazor.Infrastructure.Persistence;
 public class ApplicationDbContext : IdentityDbContext<
     ApplicationUser, ApplicationRole, string,
     ApplicationUserClaim, ApplicationUserRole, ApplicationUserLogin,
-    ApplicationRoleClaim, ApplicationUserToken>, IApplicationDbContext, IDataProtectionKeyContext
+    ApplicationRoleClaim, ApplicationUserToken>, IApplicationDbContext, IMasterDataDbContext, IDataProtectionKeyContext
 {
-    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
+    private readonly IServiceProvider _serviceProvider;
+
+    public ApplicationDbContext(
+        DbContextOptions<ApplicationDbContext> options,
+        IServiceProvider serviceProvider)
         : base(options)
     {
+        _serviceProvider = serviceProvider;
     }
 
     public DbSet<Tenant> Tenants { get; set; }
     public DbSet<Logger> Loggers { get; set; }
     public DbSet<AuditTrail> AuditTrails { get; set; }
     public DbSet<Document> Documents { get; set; }
-
-    public DbSet<PicklistSet> PicklistSets { get; set; }
     public DbSet<Product> Products { get; set; }
     public DbSet<Contact> Contacts { get; set; }
     public DbSet<DataProtectionKey> DataProtectionKeys { get; set; }
 
-    // HIS - Master/Lookup Tables
-    public DbSet<BloodGroup> BloodGroups { get; set; }
-    public DbSet<MaritalStatus> MaritalStatuses { get; set; }
-    public DbSet<City> Cities { get; set; }
-    public DbSet<Country> Countries { get; set; }
-    public DbSet<Nationality> Nationalities { get; set; }
+    public DbSet<PicklistSet> PicklistSets { get; set; }
+    
+    // HIS - Foundation (Module entities via explicit interface implementation)
+    DbSet<HIS.MasterData.Domain.Entities.Bed> IMasterDataDbContext.Beds { get => Set<HIS.MasterData.Domain.Entities.Bed>(); set { } }
+    DbSet<HIS.MasterData.Domain.Entities.BloodGroup> IMasterDataDbContext.BloodGroups { get => Set<HIS.MasterData.Domain.Entities.BloodGroup>(); set { } }
+    DbSet<HIS.MasterData.Domain.Entities.City> IMasterDataDbContext.Cities { get => Set<HIS.MasterData.Domain.Entities.City>(); set { } }
+    DbSet<HIS.MasterData.Domain.Entities.Contact> IMasterDataDbContext.Contacts { get => Set<HIS.MasterData.Domain.Entities.Contact>(); set { } }
+    DbSet<HIS.MasterData.Domain.Entities.Country> IMasterDataDbContext.Countries { get => Set<HIS.MasterData.Domain.Entities.Country>(); set { } }
+    DbSet<HIS.MasterData.Domain.Entities.Department> IMasterDataDbContext.Departments { get => Set<HIS.MasterData.Domain.Entities.Department>(); set { } }
+    DbSet<HIS.MasterData.Domain.Entities.Location> IMasterDataDbContext.Locations { get => Set<HIS.MasterData.Domain.Entities.Location>(); set { } }
+    DbSet<HIS.MasterData.Domain.Entities.MaritalStatus> IMasterDataDbContext.MaritalStatuses { get => Set<HIS.MasterData.Domain.Entities.MaritalStatus>(); set { } }
+    DbSet<HIS.MasterData.Domain.Entities.Nationality> IMasterDataDbContext.Nationalities { get => Set<HIS.MasterData.Domain.Entities.Nationality>(); set { } }
+    DbSet<HIS.MasterData.Domain.Entities.Specialty> IMasterDataDbContext.Specialties { get => Set<HIS.MasterData.Domain.Entities.Specialty>(); set { } }
 
-    // HIS - Foundation
+    // Backward compatibility public accessors
+    public DbSet<BloodGroup> BloodGroups => Set<BloodGroup>();
+    public DbSet<MaritalStatus> MaritalStatuses => Set<MaritalStatus>();
+    public DbSet<City> Cities => Set<City>();
+    public DbSet<Country> Countries => Set<Country>();
+    public DbSet<Nationality> Nationalities => Set<Nationality>();
+
+    // HIS - Foundation (Core entities)
     public DbSet<Facility> Facilities { get; set; }
-    public DbSet<Department> Departments { get; set; }
-    public DbSet<Specialty> Specialties { get; set; }
-    public DbSet<Location> Locations { get; set; }
     public DbSet<Room> Rooms { get; set; }
-    public DbSet<Bed> Beds { get; set; }
     public DbSet<Staff> Staff { get; set; }
 
     // HIS - Patient
@@ -58,9 +75,31 @@ public class ApplicationDbContext : IdentityDbContext<
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
-        
         base.OnModelCreating(builder);
+        
+        // Apply core platform configurations
         builder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
+        
+        // Apply module configurations dynamically
+        try
+        {
+            var moduleLoader = _serviceProvider?.GetService<IModuleLoader>();
+            if (moduleLoader != null)
+            {
+                var activeModules = moduleLoader.GetActiveModules();
+                foreach (var module in activeModules)
+                {
+                    module.ConfigureDatabase(builder);
+                }
+            }
+        }
+        catch
+        {
+            // If module loader is not available (e.g., during design-time), continue without modules
+            // This allows migrations to work even if the full DI container isn't initialized
+        }
+        
+        // Global filters
         builder.ApplyGlobalFilters<ISoftDelete>(s => s.Deleted == null);
     }
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)

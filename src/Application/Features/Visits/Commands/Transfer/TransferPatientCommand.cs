@@ -1,5 +1,4 @@
 using CleanArchitecture.Blazor.Application.Features.Visits.Caching;
-using CleanArchitecture.Blazor.Application.Features.Beds.Caching;
 
 namespace CleanArchitecture.Blazor.Application.Features.Visits.Commands.Transfer;
 
@@ -16,7 +15,7 @@ public class TransferPatientCommand : ICacheInvalidatorRequest<Result<int>>
     public int? OrderedByDoctorId { get; set; }
 
     public string CacheKey => VisitCacheKey.GetAllCacheKey;
-    public IEnumerable<string>? Tags => VisitCacheKey.Tags?.Concat(BedCacheKey.Tags ?? Enumerable.Empty<string>());
+    public IEnumerable<string>? Tags => VisitCacheKey.Tags; // TODO: Add BedCacheKey.Tags when cross-module caching is implemented
 }
 
 public class TransferPatientCommandValidator : AbstractValidator<TransferPatientCommand>
@@ -48,20 +47,20 @@ public class TransferPatientCommandHandler : IRequestHandler<TransferPatientComm
         if (visit.VisitStatus != "Admitted")
             return await Result<int>.FailureAsync($"Cannot transfer patient. Visit status is '{visit.VisitStatus}'.");
 
-        // Verify destination bed availability
-        var toBed = await _context.Beds.SingleOrDefaultAsync(b => b.Id == request.ToBedId, cancellationToken);
-        if (toBed == null)
-            return await Result<int>.FailureAsync($"Destination bed with id: [{request.ToBedId}] not found.");
-        if (toBed.BedStatus != "Available")
-            return await Result<int>.FailureAsync($"Destination bed '{toBed.Code}' is not available. Current status: {toBed.BedStatus}");
+        // TODO: Verify destination bed availability - requires cross-module communication with MasterData module
+        // var toBed = await _context.Beds.SingleOrDefaultAsync(b => b.Id == request.ToBedId, cancellationToken);
+        // if (toBed == null)
+        //     return await Result<int>.FailureAsync($"Destination bed with id: [{request.ToBedId}] not found.");
+        // if (toBed.BedStatus != "Available")
+        //     return await Result<int>.FailureAsync($"Destination bed '{toBed.Code}' is not available. Current status: {toBed.BedStatus}");
 
-        // Release current bed
-        var fromBed = await _context.Beds.SingleOrDefaultAsync(b => b.Id == visit.Admission.BedId, cancellationToken);
-        if (fromBed != null)
-        {
-            fromBed.BedStatus = "Cleaning";
-            fromBed.AddDomainEvent(new UpdatedEvent<Bed>(fromBed));
-        }
+        // TODO: Release current bed - requires cross-module communication with MasterData module
+        // var fromBed = await _context.Beds.SingleOrDefaultAsync(b => b.Id == visit.Admission.BedId, cancellationToken);
+        // if (fromBed != null)
+        // {
+        //     fromBed.BedStatus = "Cleaning";
+        //     fromBed.AddDomainEvent(new UpdatedEvent<Bed>(fromBed));
+        // }
 
         // Create transfer record
         var transfer = new Domain.Entities.Transfer
@@ -83,9 +82,9 @@ public class TransferPatientCommandHandler : IRequestHandler<TransferPatientComm
         visit.Admission.BedId = request.ToBedId;
         visit.Admission.LocationId = request.ToLocationId;
 
-        // Occupy new bed
-        toBed.BedStatus = "Occupied";
-        toBed.AddDomainEvent(new UpdatedEvent<Bed>(toBed));
+        // TODO: Occupy new bed - requires cross-module communication with MasterData module
+        // toBed.BedStatus = "Occupied";
+        // toBed.AddDomainEvent(new UpdatedEvent<Bed>(toBed));
 
         await _context.SaveChangesAsync(cancellationToken);
         return await Result<int>.SuccessAsync(transfer.Id);

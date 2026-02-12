@@ -15,8 +15,6 @@ public class Admission : BaseAuditableSoftDeleteEntity, IMustHaveTenant
     public string TenantId { get; set; } = string.Empty;
 
     public virtual Visit? Visit { get; set; }
-    public virtual Bed? Bed { get; set; }
     public virtual Room? Room { get; set; }
-    public virtual Location? Location { get; set; }
     public virtual Staff? AdmittingDoctor { get; set; }
 }

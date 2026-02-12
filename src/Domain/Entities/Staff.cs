@@ -18,8 +18,6 @@ public class Staff : BaseAuditableSoftDeleteEntity, IMustHaveTenant
     public string TenantId { get; set; } = string.Empty;
 
     public virtual ApplicationUser? ApplicationUser { get; set; }
-    public virtual Department? Department { get; set; }
-    public virtual Specialty? Specialty { get; set; }
 
     public string FullName => $"{Title} {FirstName} {LastName}".Trim();
 }

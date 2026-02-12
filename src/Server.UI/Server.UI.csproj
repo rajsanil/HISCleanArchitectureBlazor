@@ -49,6 +49,13 @@
       <ProjectReference Include="..\Migrators\Migrators.MSSQL\Migrators.MSSQL.csproj" />
       <ProjectReference Include="..\Migrators\Migrators.PostgreSQL\Migrators.PostgreSQL.csproj" />
       <ProjectReference Include="..\Migrators\Migrators.SqLite\Migrators.SqLite.csproj" />
+      <ProjectReference Include="..\Modules\HIS.Core\HIS.Core.Abstractions\HIS.Core.Abstractions.csproj" />
+      <ProjectReference Include="..\Modules\HIS.Core\HIS.Core.UI\HIS.Core.UI.csproj" />
+      <ProjectReference Include="..\Modules\HIS.Core\HIS.Core.Licensing\HIS.Core.Licensing.csproj" />
+      <ProjectReference Include="..\Modules\HIS.Core\HIS.Core.Infrastructure\HIS.Core.Infrastructure.csproj" />
+      <ProjectReference Include="..\Modules\HIS.MasterData\HIS.MasterData.Application\HIS.MasterData.Application.csproj" />
+      <ProjectReference Include="..\Modules\HIS.MasterData\HIS.MasterData.Infrastructure\HIS.MasterData.Infrastructure.csproj" />
+      <ProjectReference Include="..\Modules\HIS.MasterData\HIS.MasterData.UI\HIS.MasterData.UI.csproj" />
     </ItemGroup>
    
 

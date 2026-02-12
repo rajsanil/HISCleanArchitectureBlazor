@@ -10,7 +10,4 @@ public class Room : BaseAuditableSoftDeleteEntity, IMustHaveTenant
     public int LocationId { get; set; }
     public bool IsActive { get; set; } = true;
     public string TenantId { get; set; } = string.Empty;
-
-    public virtual Location? Location { get; set; }
-    public virtual ICollection<Bed> Beds { get; set; } = new HashSet<Bed>();
 }

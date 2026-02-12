@@ -18,10 +18,50 @@
     <Project Path="src/Migrators/Migrators.PostgreSQL/Migrators.PostgreSQL.csproj" />
     <Project Path="src/Migrators/Migrators.SqLite/Migrators.SqLite.csproj" />
   </Folder>
+  <Folder Name="/src/Modules/">
+    <Folder Name="HIS.Core/">
+      <Project Path="src/Modules/HIS.Core/HIS.Core.Abstractions/HIS.Core.Abstractions.csproj" />
+      <Project Path="src/Modules/HIS.Core/HIS.Core.UI/HIS.Core.UI.csproj" />
+      <Project Path="src/Modules/HIS.Core/HIS.Core.Licensing/HIS.Core.Licensing.csproj" />
+      <Project Path="src/Modules/HIS.Core/HIS.Core.Infrastructure/HIS.Core.Infrastructure.csproj" />
+    </Folder>
+    <Folder Name="HIS.MasterData/">
+      <Project Path="src/Modules/HIS.MasterData/HIS.MasterData.Domain/HIS.MasterData.Domain.csproj" />
+      <Project Path="src/Modules/HIS.MasterData/HIS.MasterData.Application/HIS.MasterData.Application.csproj" />
+      <Project Path="src/Modules/HIS.MasterData/HIS.MasterData.Infrastructure/HIS.MasterData.Infrastructure.csproj" />
+      <Project Path="src/Modules/HIS.MasterData/HIS.MasterData.UI/HIS.MasterData.UI.csproj" />
+    </Folder>
+  </Folder>
+  <Folder Name="/src/Modules/HIS.Core/" />
+  <Folder Name="/src/Modules/HIS.Core/HIS.Core.Abstractions/">
+    <Project Path="src/Modules/HIS.Core/HIS.Core.Abstractions/HIS.Core.Abstractions.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/HIS.Core/HIS.Core.Infrastructure/">
+    <Project Path="src/Modules/HIS.Core/HIS.Core.Infrastructure/HIS.Core.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/HIS.Core/HIS.Core.Licensing/">
+    <Project Path="src/Modules/HIS.Core/HIS.Core.Licensing/HIS.Core.Licensing.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/HIS.MasterData/" />
+  <Folder Name="/src/Modules/HIS.MasterData/HIS.MasterData.Application/">
+    <Project Path="src/Modules/HIS.MasterData/HIS.MasterData.Application/HIS.MasterData.Application.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/HIS.MasterData/HIS.MasterData.Domain/">
+    <Project Path="src/Modules/HIS.MasterData/HIS.MasterData.Domain/HIS.MasterData.Domain.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/HIS.MasterData/HIS.MasterData.Infrastructure/">
+    <Project Path="src/Modules/HIS.MasterData/HIS.MasterData.Infrastructure/HIS.MasterData.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/HIS.MasterData/HIS.MasterData.UI/">
+    <Project Path="src/Modules/HIS.MasterData/HIS.MasterData.UI/HIS.MasterData.UI.csproj" />
+  </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Application.IntegrationTests/Application.IntegrationTests.csproj" />
     <Project Path="tests/Application.UnitTests/Application.UnitTests.csproj" />
     <Project Path="tests/Domain.UnitTests/Domain.UnitTests.csproj" />
+  </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/LicenseGenerator/LicenseGenerator.csproj" />
   </Folder>
   <Project Path="docker-compose.dcproj">
     <Build />

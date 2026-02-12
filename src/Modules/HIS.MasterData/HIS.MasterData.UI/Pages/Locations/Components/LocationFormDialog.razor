@@ -1,0 +1,123 @@
+@using HIS.MasterData.Application.Features.Locations.Commands.AddEdit
+@using CleanArchitecture.Blazor.Application.Features.Facilities.DTOs
+@using CleanArchitecture.Blazor.Application.Features.Facilities.Queries.GetAll
+@using HIS.MasterData.Application.Features.Departments.DTOs
+@using HIS.MasterData.Application.Features.Departments.Queries.GetAll
+@using CleanArchitecture.Blazor.Domain.Common.Enums
+@inject IStringLocalizer<Locations> L
+
+<MudDialog>
+    <DialogContent>
+        <MudForm Model="@Model" @ref="@_form" Validation="@(Validator.ValidateValue(Model))">
+            <MudGrid Spacing="2">
+                <MudItem xs="12" sm="6">
+                    <MudTextField Label="@L["Code"]" @bind-Value="Model.Code" For="@(() => Model.Code)" Required="true" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudTextField Label="@L["Name"]" @bind-Value="Model.Name" For="@(() => Model.Name)" Required="true" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <PicklistAutocomplete Picklist="Picklist.LocationType" T="string" Label="@L["Location Type"]" @bind-Value="Model.LocationType" For="@(() => Model.LocationType)" Required="true" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudSelect T="int" Label="@L["Facility"]" @bind-Value="Model.FacilityId" For="@(() => Model.FacilityId)" Required="true">
+                        @foreach (var facility in _facilities)
+                        {
+                            <MudSelectItem T="int" Value="@facility.Id">@facility.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudSelect T="int" Label="@L["Department"]" @bind-Value="Model.DepartmentId" For="@(() => Model.DepartmentId)" Required="true">
+                        @foreach (var dept in _departments)
+                        {
+                            <MudSelectItem T="int" Value="@dept.Id">@dept.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudCheckBox Label="@L["Is Active"]" @bind-Value="Model.IsActive" For="@(() => Model.IsActive)" />
+                </MudItem>
+            </MudGrid>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">@ConstantString.Cancel</MudButton>
+        <MudLoadingButton Loading="@_saveingnew" OnClick="SaveAndNew">@ConstantString.SaveAndNew</MudLoadingButton>
+        <MudLoadingButton Loading="@_saving" OnClick="Submit">@ConstantString.Save</MudLoadingButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    [EditorRequired][Parameter] public AddEditLocationCommand Model { get; set; } = default!;
+    [Parameter] public Action? Refresh { get; set; }
+    private MudForm? _form;
+    private bool _saving;
+    private bool _saveingnew;
+    private IEnumerable<FacilityDto> _facilities = Enumerable.Empty<FacilityDto>();
+    private IEnumerable<DepartmentDto> _departments = Enumerable.Empty<DepartmentDto>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _facilities = await Mediator.Send(new GetAllFacilitiesQuery());
+        _departments = await Mediator.Send(new GetAllDepartmentsQuery());
+    }
+
+    private async Task Submit()
+    {
+        _saving = true;
+        try
+        {
+            await _form!.Validate().ConfigureAwait(false);
+            if (!_form!.IsValid) return;
+            var result = await Mediator.Send(Model);
+            result.Match(
+                data =>
+                {
+                    MudDialog.Close(DialogResult.Ok(true));
+                    Snackbar.Add(ConstantString.SaveSuccess, Severity.Info);
+                    return data;
+                },
+                errors =>
+                {
+                    Snackbar.Add(errors, Severity.Error);
+                    return 0;
+                });
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private async Task SaveAndNew()
+    {
+        _saveingnew = true;
+        try
+        {
+            await _form!.Validate().ConfigureAwait(false);
+            if (!_form!.IsValid) return;
+            var result = await Mediator.Send(Model);
+            result.Match(
+                data =>
+                {
+                    Snackbar.Add(ConstantString.SaveSuccess, Severity.Info);
+                    Refresh?.Invoke();
+                    Model = new AddEditLocationCommand();
+                    return data;
+                },
+                errors =>
+                {
+                    Snackbar.Add(result.ErrorMessage, Severity.Error);
+                    return 0;
+                });
+        }
+        finally
+        {
+            _saveingnew = false;
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

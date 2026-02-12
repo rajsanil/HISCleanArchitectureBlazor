@@ -1,0 +1,72 @@
+@page "/system/license-error"
+@using HIS.Core.Abstractions
+@inject ILicenseService LicenseService
+@inject NavigationManager Navigation
+
+<PageTitle>License Error</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-8">
+    <MudPaper Elevation="3" Class="pa-6">
+        <MudStack Spacing="4">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                <MudIcon Icon="@Icons.Material.Filled.Lock" Color="Color.Error" Size="Size.Large" />
+                <MudText Typo="Typo.h4" Color="Color.Error">Module Not Licensed</MudText>
+            </MudStack>
+
+            <MudDivider />
+
+            <MudText Typo="Typo.body1">
+                The module you're trying to access (<strong>@_requestedModule</strong>) is not included in your current license.
+            </MudText>
+
+            @if (_licenseInfo != null)
+            {
+                <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">
+                    <MudText Typo="Typo.body2"><strong>License Information:</strong></MudText>
+                    <MudText Typo="Typo.body2">Customer: @_licenseInfo.CustomerName</MudText>
+                    <MudText Typo="Typo.body2">Type: @_licenseInfo.LicenseType</MudText>
+                    <MudText Typo="Typo.body2">Expires: @(_licenseInfo.ExpiryDate?.ToString("yyyy-MM-dd") ?? "Never")</MudText>
+                    <MudText Typo="Typo.body2">Licensed Modules: @_licenseInfo.LicensedModules.Count</MudText>
+                </MudAlert>
+            }
+
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                To access this module, please contact your system administrator or upgrade your license.
+            </MudText>
+
+            <MudStack Row="true" Spacing="2">
+                <MudButton Variant="Variant.Filled" 
+                          Color="Color.Primary" 
+                          StartIcon="@Icons.Material.Filled.Home"
+                          OnClick="GoHome">
+                    Return Home
+                </MudButton>
+                <MudButton Variant="Variant.Outlined" 
+                          Color="Color.Secondary" 
+                          StartIcon="@Icons.Material.Filled.Info"
+                          Href="/system/license">
+                    View License Details
+                </MudButton>
+            </MudStack>
+        </MudStack>
+    </MudPaper>
+</MudContainer>
+
+@code {
+    private string _requestedModule = "Unknown";
+    private LicenseInfo? _licenseInfo;
+
+    [SupplyParameterFromQuery]
+    public string? Module { get; set; }
+
+    protected override void OnInitialized()
+    {
+        _requestedModule = Module ?? "Unknown";
+        _licenseInfo = LicenseService.GetLicenseInfo();
+    }
+
+    private void GoHome()
+    {
+        Navigation.NavigateTo("/");
+    }
+}

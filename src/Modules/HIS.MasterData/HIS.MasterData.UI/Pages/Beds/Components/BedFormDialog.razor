@@ -1,0 +1,114 @@
+@using HIS.MasterData.Application.Features.Beds.Commands.AddEdit
+@using HIS.MasterData.Application.Features.Rooms.DTOs
+@using HIS.MasterData.Application.Features.Rooms.Queries.GetAll
+@inject IStringLocalizer<Beds> L
+
+<MudDialog>
+    <DialogContent>
+        <MudForm Model="@Model" @ref="@_form" Validation="@(Validator.ValidateValue(Model))">
+            <MudGrid Spacing="2">
+                <MudItem xs="12" sm="6">
+                    <MudTextField Label="@L["Code"]" @bind-Value="Model.Code" For="@(() => Model.Code)" Required="true" />
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudSelect T="int" Label="@L["Room"]" @bind-Value="Model.RoomId" For="@(() => Model.RoomId)" Required="true">
+                        @foreach (var room in _rooms)
+                        {
+                            <MudSelectItem T="int" Value="@room.Id">@room.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudSelect T="string" Label="@L["Bed Status"]" @bind-Value="Model.BedStatus" For="@(() => Model.BedStatus)" Required="true">
+                        <MudSelectItem Value="@("Available")">Available</MudSelectItem>
+                        <MudSelectItem Value="@("Occupied")">Occupied</MudSelectItem>
+                        <MudSelectItem Value="@("Maintenance")">Maintenance</MudSelectItem>
+                        <MudSelectItem Value="@("Cleaning")">Cleaning</MudSelectItem>
+                        <MudSelectItem Value="@("Reserved")">Reserved</MudSelectItem>
+                        <MudSelectItem Value="@("Blocked")">Blocked</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" sm="6">
+                    <MudCheckBox Label="@L["Is Active"]" @bind-Value="Model.IsActive" For="@(() => Model.IsActive)" />
+                </MudItem>
+            </MudGrid>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">@ConstantString.Cancel</MudButton>
+        <MudLoadingButton Loading="@_saveingnew" OnClick="SaveAndNew">@ConstantString.SaveAndNew</MudLoadingButton>
+        <MudLoadingButton Loading="@_saving" OnClick="Submit">@ConstantString.Save</MudLoadingButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    [EditorRequired][Parameter] public AddEditBedCommand Model { get; set; } = default!;
+    [Parameter] public Action? Refresh { get; set; }
+    private MudForm? _form;
+    private bool _saving;
+    private bool _saveingnew;
+    private IEnumerable<RoomDto> _rooms = Enumerable.Empty<RoomDto>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _rooms = await Mediator.Send(new GetAllRoomsQuery());
+    }
+
+    private async Task Submit()
+    {
+        _saving = true;
+        try
+        {
+            await _form!.Validate().ConfigureAwait(false);
+            if (!_form!.IsValid) return;
+            var result = await Mediator.Send(Model);
+            result.Match(
+                data =>
+                {
+                    MudDialog.Close(DialogResult.Ok(true));
+                    Snackbar.Add(ConstantString.SaveSuccess, Severity.Info);
+                    return data;
+                },
+                errors =>
+                {
+                    Snackbar.Add(errors, Severity.Error);
+                    return 0;
+                });
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private async Task SaveAndNew()
+    {
+        _saveingnew = true;
+        try
+        {
+            await _form!.Validate().ConfigureAwait(false);
+            if (!_form!.IsValid) return;
+            var result = await Mediator.Send(Model);
+            result.Match(
+                data =>
+                {
+                    Snackbar.Add(ConstantString.SaveSuccess, Severity.Info);
+                    Refresh?.Invoke();
+                    Model = new AddEditBedCommand();
+                    return data;
+                },
+                errors =>
+                {
+                    Snackbar.Add(result.ErrorMessage, Severity.Error);
+                    return 0;
+                });
+        }
+        finally
+        {
+            _saveingnew = false;
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

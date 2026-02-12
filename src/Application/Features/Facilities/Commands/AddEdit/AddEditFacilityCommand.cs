@@ -29,23 +29,31 @@ public class AddEditFacilityCommandHandler : IRequestHandler<AddEditFacilityComm
 
     public async Task<Result<int>> Handle(AddEditFacilityCommand request, CancellationToken cancellationToken)
     {
-        if (request.Id > 0)
+        try
         {
-            var item = await _context.Facilities.SingleOrDefaultAsync(x => x.Id == request.Id, cancellationToken);
-            if (item == null)
-                return await Result<int>.FailureAsync($"Facility with id: [{request.Id}] not found.");
-            FacilityMapper.ApplyChangesFrom(request, item);
-            item.AddDomainEvent(new UpdatedEvent<Facility>(item));
-            await _context.SaveChangesAsync(cancellationToken);
-            return await Result<int>.SuccessAsync(item.Id);
+            if (request.Id > 0)
+            {
+                var item = await _context.Facilities.SingleOrDefaultAsync(x => x.Id == request.Id, cancellationToken);
+                if (item == null)
+                    return await Result<int>.FailureAsync($"Facility with id: [{request.Id}] not found.");
+                FacilityMapper.ApplyChangesFrom(request, item);
+                item.AddDomainEvent(new UpdatedEvent<Facility>(item));
+                await _context.SaveChangesAsync(cancellationToken);
+                return await Result<int>.SuccessAsync(item.Id);
+            }
+            else
+            {
+                var item = FacilityMapper.FromEditCommand(request);
+                item.AddDomainEvent(new CreatedEvent<Facility>(item));
+                _context.Facilities.Add(item);
+                await _context.SaveChangesAsync(cancellationToken);
+                return await Result<int>.SuccessAsync(item.Id);
+            }
         }
-        else
+        catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("IX_Facilities_Code") == true)
         {
-            var item = FacilityMapper.FromEditCommand(request);
-            item.AddDomainEvent(new CreatedEvent<Facility>(item));
-            _context.Facilities.Add(item);
-            await _context.SaveChangesAsync(cancellationToken);
-            return await Result<int>.SuccessAsync(item.Id);
+            _context.ChangeTracker.Clear();
+            return await Result<int>.FailureAsync($"Code|A facility with code '{request.Code}' already exists.");
         }
     }
 }

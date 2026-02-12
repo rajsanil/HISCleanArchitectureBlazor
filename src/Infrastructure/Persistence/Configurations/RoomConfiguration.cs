@@ -13,10 +13,8 @@ public class RoomConfiguration : IEntityTypeConfiguration<Room>
         builder.Property(x => x.TenantId).HasMaxLength(450).IsRequired();
         builder.Property(x => x.IsActive).HasDefaultValue(true);
 
-        builder.HasOne(x => x.Location)
-            .WithMany(x => x.Rooms)
-            .HasForeignKey(x => x.LocationId)
-            .OnDelete(DeleteBehavior.Restrict);
+        // Note: Location navigation removed - entity moved to MasterData module
+        // Foreign key relationship maintained via LocationId
 
         builder.HasIndex(x => new { x.Code, x.LocationId })
             .IsUnique()

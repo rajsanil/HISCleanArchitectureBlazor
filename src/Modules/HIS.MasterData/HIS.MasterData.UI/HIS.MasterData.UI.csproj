@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\HIS.Core\HIS.Core.Abstractions\HIS.Core.Abstractions.csproj" />
+    <ProjectReference Include="..\..\HIS.Core\HIS.Core.UI\HIS.Core.UI.csproj" />
+    <ProjectReference Include="..\HIS.MasterData.Application\HIS.MasterData.Application.csproj" />
+    <ProjectReference Include="..\HIS.MasterData.Infrastructure\HIS.MasterData.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="10.0.2" />
+    <PackageReference Include="MudBlazor" Version="8.15.0" />
+    <PackageReference Include="Telerik.UI.for.Blazor" Version="12.3.0" />
+    <PackageReference Include="BlazorDownloadFile" Version="2.4.0.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <SupportedPlatform Include="browser" />
+  </ItemGroup>
+
+</Project>

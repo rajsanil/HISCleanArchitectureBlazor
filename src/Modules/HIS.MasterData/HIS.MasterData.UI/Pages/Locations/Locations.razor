@@ -1,0 +1,361 @@
+@page "/pages/locations"
+@using HIS.MasterData.Application.Features.Locations.DTOs
+@using HIS.MasterData.Application.Features.Locations.Mappers
+@using HIS.MasterData.Application.Features.Locations.Queries.GetAll
+@using HIS.MasterData.Application.Features.Locations.Caching
+@using HIS.MasterData.Application.Features.Locations.Commands.AddEdit
+@using HIS.MasterData.Application.Features.Locations.Commands.Delete
+@using CleanArchitecture.Blazor.Application.Features.Facilities.DTOs
+@using CleanArchitecture.Blazor.Application.Features.Facilities.Queries.GetAll
+@using HIS.MasterData.Application.Features.Departments.DTOs
+@using HIS.MasterData.Application.Features.Departments.Queries.GetAll
+@using Telerik.Blazor.Components
+
+@attribute [Authorize(Policy = MasterDataPermissions.Locations.View)]
+@inject IStringLocalizer<Locations> L
+@inject IValidationService Validator
+
+<PageTitle>@Title</PageTitle>
+
+<MudStack Spacing="0" Class="flex-grow-1">
+    <MudStack Row Spacing="2" Class="align-center mb-2">
+        <MudIcon Icon="@Icons.Material.Filled.LocationOn" Size="Size.Large" />
+        <MudText Typo="Typo.h6">@L[_currentDto.GetClassDescription()]</MudText>
+        <MudSpacer />
+        <MudButton Disabled="@_loading"
+                   OnClick="@(() => OnRefresh())"
+                   StartIcon="@Icons.Material.Outlined.Refresh"
+                   Variant="Variant.Outlined">
+            @ConstantString.Refresh
+        </MudButton>
+        @if (_canCreate)
+        {
+            <MudButton StartIcon="@Icons.Material.Outlined.Add"
+                       OnClick="OnCreate"
+                       Color="Color.Primary"
+                       Variant="Variant.Filled">
+                @ConstantString.New
+            </MudButton>
+        }
+        @if (_canDelete && _selectedItems.Any())
+        {
+            <MudButton StartIcon="@Icons.Material.Outlined.Delete"
+                       OnClick="OnDeleteChecked"
+                       Color="Color.Error"
+                       Variant="Variant.Filled">
+                @ConstantString.Delete (@_selectedItems.Count())
+            </MudButton>
+        }
+    </MudStack>
+
+    <TelerikGrid Data="@_items"
+                 Pageable="true"
+                 PageSize="20"
+                 Sortable="true"
+                 FilterMode="GridFilterMode.FilterRow"
+                 SelectionMode="GridSelectionMode.Multiple"
+                 @bind-SelectedItems="_selectedItems"
+                 Height="calc(100vh - 280px)">
+        <GridColumns>
+            <GridCheckboxColumn SelectAll="true" Width="60px" />
+            <GridColumn Field="@nameof(LocationDto.Code)" Title="@L["Code"]" Width="150px" />
+            <GridColumn Field="@nameof(LocationDto.Name)" Title="@L["Name"]" Width="200px" />
+            <GridColumn Field="@nameof(LocationDto.LocationType)" Title="@L["Location Type"]" Width="150px" />
+            <GridColumn Field="@nameof(LocationDto.FacilityId)" Title="@L["Facility ID"]" Width="120px" />
+            <GridColumn Field="@nameof(LocationDto.DepartmentId)" Title="@L["Department ID"]" Width="130px" />
+            <GridColumn Field="@nameof(LocationDto.IsActive)" Title="@L["Active"]" Width="100px">
+                <Template>
+                    @{
+                        var location = (LocationDto)context;
+                        <MudCheckBox T="bool" Checked="@location.IsActive" ReadOnly="true" Size="Size.Small" />
+                    }
+                </Template>
+            </GridColumn>
+            <GridColumn Width="100px" Title="@ConstantString.Actions" Sortable="false" Filterable="false">
+                <Template>
+                    @{
+                        var location = (LocationDto)context;
+                        <MudStack Row Spacing="1">
+                            @if (_canEdit)
+                            {
+                                <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                               Size="Size.Small"
+                                               Color="Color.Primary"
+                                               OnClick="@(() => OnEdit(location))" />
+                            }
+                            @if (_canDelete)
+                            {
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                               Size="Size.Small"
+                                               Color="Color.Error"
+                                               OnClick="@(() => OnDelete(location))" />
+                            }
+                        </MudStack>
+                    }
+                </Template>
+            </GridColumn>
+        </GridColumns>
+    </TelerikGrid>
+</MudStack>
+
+<TelerikWindow @bind-Visible="_formVisible"
+               Modal="true"
+               Width="900px">
+    <WindowTitle>@_formTitle</WindowTitle>
+    <WindowContent>
+        @if (_editModel is not null)
+        {
+            <MudForm @ref="_form" Model="@_editModel" Validation="@(Validator.ValidateValue(_editModel))">
+                <MudGrid Spacing="3" Class="pa-2">
+                    <MudItem xs="12" sm="6">
+                        <MudTextField @ref="_codeField"
+                                      Label="@L["Code"]"
+                                      @bind-Value="_editModel.Code"
+                                      Required="true"
+                                      Variant="Variant.Outlined"
+                                      Error="@_fieldErrors.ContainsKey("Code")"
+                                      ErrorText="@GetFieldError("Code")" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudTextField @ref="_nameField"
+                                      Label="@L["Name"]"
+                                      @bind-Value="_editModel.Name"
+                                      Required="true"
+                                      Variant="Variant.Outlined"
+                                      Error="@_fieldErrors.ContainsKey("Name")"
+                                      ErrorText="@GetFieldError("Name")" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <PicklistAutocomplete Picklist="Picklist.LocationType"
+                                              T="string"
+                                              Label="@L["Location Type"]"
+                                              @bind-Value="_editModel.LocationType"
+                                              Required="true"
+                                              Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudSelect T="int"
+                                   Label="@L["Facility"]"
+                                   @bind-Value="_editModel.FacilityId"
+                                   Required="true"
+                                   Variant="Variant.Outlined"
+                                   AnchorOrigin="Origin.BottomCenter">
+                            @foreach (var facility in _facilities)
+                            {
+                                <MudSelectItem T="int" Value="@facility.Id">@facility.Name</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" sm="6">
+                        <MudSelect T="int"
+                                   Label="@L["Department"]"
+                                   @bind-Value="_editModel.DepartmentId"
+                                   Required="true"
+                                   Variant="Variant.Outlined"
+                                   AnchorOrigin="Origin.BottomCenter">
+                            @foreach (var dept in _departments)
+                            {
+                                <MudSelectItem T="int" Value="@dept.Id">@dept.Name</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" sm="6" Class="d-flex align-center">
+                        <MudCheckBox Label="@L["Is Active"]"
+                                     @bind-Value="_editModel.IsActive"
+                                     Color="Color.Primary" />
+                    </MudItem>
+                </MudGrid>
+            </MudForm>
+
+            <MudStack Row Spacing="2" Justify="Justify.FlexEnd" Class="pa-2 mt-2">
+                <MudButton Variant="Variant.Text"
+                           Color="Color.Default"
+                           OnClick="CloseForm">
+                    @ConstantString.Cancel
+                </MudButton>
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           OnClick="SaveForm">
+                    @ConstantString.Save
+                </MudButton>
+            </MudStack>
+        }
+    </WindowContent>
+</TelerikWindow>
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState> AuthState { get; set; } = default!;
+    [CascadingParameter] private UserProfile? UserProfile { get; set; }
+    public string? Title { get; private set; }
+    private IEnumerable<LocationDto> _selectedItems = new List<LocationDto>();
+    private LocationDto _currentDto = new();
+    private bool _loading;
+    private List<LocationDto> _items = new();
+    private bool _canCreate;
+    private bool _canEdit;
+    private bool _canDelete;
+
+    // Form state
+    private bool _formVisible = false;
+    private string _formTitle = string.Empty;
+    private AddEditLocationCommand? _editModel;
+    private MudForm? _form;
+    private List<FacilityDto> _facilities = new();
+    private List<DepartmentDto> _departments = new();
+
+    // Field error state
+    private Dictionary<string, string> _fieldErrors = new();
+    private MudTextField<string>? _codeField;
+    private MudTextField<string>? _nameField;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Title = L[_currentDto.GetClassDescription()];
+        var state = await AuthState;
+        _canCreate = (await AuthService.AuthorizeAsync(state.User, MasterDataPermissions.Locations.Create)).Succeeded;
+        _canEdit = (await AuthService.AuthorizeAsync(state.User, MasterDataPermissions.Locations.Edit)).Succeeded;
+        _canDelete = (await AuthService.AuthorizeAsync(state.User, MasterDataPermissions.Locations.Delete)).Succeeded;
+        await LoadData();
+        await LoadLookupData();
+    }
+
+    private async Task LoadData()
+    {
+        _loading = true;
+        try
+        {
+            var result = await Mediator.Send(new GetAllLocationsQuery());
+            _items = result.ToList();
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task LoadLookupData()
+    {
+        _facilities = (await Mediator.Send(new GetAllFacilitiesQuery())).ToList();
+        _departments = (await Mediator.Send(new GetAllDepartmentsQuery())).ToList();
+    }
+
+    private async Task OnRefresh()
+    {
+        LocationCacheKey.Refresh();
+        _selectedItems = new List<LocationDto>();
+        await LoadData();
+    }
+
+    private void OnCreate()
+    {
+        ClearFieldErrors();
+        _editModel = new AddEditLocationCommand();
+        _formTitle = string.Format(ConstantString.CreateAnItem, L["Location"]);
+        _formVisible = true;
+    }
+
+    private void OnEdit(LocationDto dto)
+    {
+        ClearFieldErrors();
+        _editModel = LocationMapper.ToEditCommand(dto);
+        _formTitle = string.Format(ConstantString.EditTheItem, L["Location"]);
+        _formVisible = true;
+    }
+
+    private void CloseForm()
+    {
+        ClearFieldErrors();
+        _formVisible = false;
+        _editModel = null;
+    }
+
+    private async Task SaveForm()
+    {
+        if (_form != null)
+        {
+            ClearFieldErrors();
+            await _form.Validate();
+            if (_form.IsValid && _editModel != null)
+            {
+                var result = await Mediator.Send(_editModel);
+                if (result.Succeeded)
+                {
+                    Snackbar.Add(ConstantString.SaveSuccess, Severity.Success);
+                    CloseForm();
+                    await LoadData();
+                    _selectedItems = new List<LocationDto>();
+                }
+                else
+                {
+                    var (fieldName, cleanMessage) = ParseFieldError(result.ErrorMessage);
+                    if (!string.IsNullOrEmpty(fieldName))
+                    {
+                        SetFieldError(fieldName, cleanMessage);
+                    }
+                    Snackbar.Add(cleanMessage, Severity.Error);
+                }
+            }
+        }
+    }
+
+    // -- Field Error Helpers --
+
+    private (string fieldName, string message) ParseFieldError(string? error)
+    {
+        if (string.IsNullOrEmpty(error)) return (string.Empty, error ?? string.Empty);
+        var idx = error.IndexOf('|');
+        if (idx > 0)
+            return (error[..idx], error[(idx + 1)..]);
+        return (string.Empty, error);
+    }
+
+    private string GetFieldError(string fieldName)
+        => _fieldErrors.TryGetValue(fieldName, out var msg) ? msg : string.Empty;
+
+    private void ClearFieldErrors()
+        => _fieldErrors.Clear();
+
+    private void SetFieldError(string fieldName, string message)
+    {
+        _fieldErrors[fieldName] = message;
+        _ = Task.Run(async () =>
+        {
+            await Task.Delay(100);
+            await InvokeAsync(() =>
+            {
+                if (fieldName == "Code") _codeField?.FocusAsync();
+                else if (fieldName == "Name") _nameField?.FocusAsync();
+                StateHasChanged();
+            });
+        });
+    }
+
+    private async Task OnDelete(LocationDto dto)
+    {
+        var contentText = string.Format(ConstantString.DeleteConfirmation, dto.Name);
+        var command = new DeleteLocationCommand(new[] { dto.Id });
+        await DialogServiceHelper.ShowDeleteConfirmationDialogAsync(command, ConstantString.DeleteConfirmationTitle, contentText, async () =>
+        {
+            await InvokeAsync(async () =>
+            {
+                await LoadData();
+                _selectedItems = new List<LocationDto>();
+            });
+        });
+    }
+
+    private async Task OnDeleteChecked()
+    {
+        var contentText = string.Format(ConstantString.DeleteConfirmWithSelected, _selectedItems.Count());
+        var command = new DeleteLocationCommand(_selectedItems.Select(x => x.Id).ToArray());
+        await DialogServiceHelper.ShowDeleteConfirmationDialogAsync(command, ConstantString.DeleteConfirmationTitle, contentText, async () =>
+        {
+            await InvokeAsync(async () =>
+            {
+                await LoadData();
+                _selectedItems = new List<LocationDto>();
+            });
+        });
+    }
+}
+

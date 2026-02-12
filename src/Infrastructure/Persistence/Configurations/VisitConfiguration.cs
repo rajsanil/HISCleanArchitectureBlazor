@@ -28,10 +28,8 @@ public class VisitConfiguration : IEntityTypeConfiguration<Visit>
             .HasForeignKey(x => x.FacilityId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasOne(x => x.Department)
-            .WithMany()
-            .HasForeignKey(x => x.DepartmentId)
-            .OnDelete(DeleteBehavior.Restrict);
+        // Note: Department navigation removed - entity moved to MasterData module
+        // Foreign key relationship maintained via DepartmentId
 
         builder.HasOne(x => x.AttendingDoctor)
             .WithMany()
