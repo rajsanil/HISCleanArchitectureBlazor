@@ -61,105 +61,113 @@ public class MasterDataModule : IHisModule
     {
         return
         [
-            // Medical Business Setup - First section
+            // Master Data - Single unified section
             new ModuleMenuSection
             {
-                Title = "Medical Business Setup",
-                Roles = ["Admin", "Users"],
+                Title = "Master Data",
+                Roles = ["Admin", "Users", "Basic"],
                 Items =
                 [
+                    // Master Setup - Hub page with navigation cards
+                    new ModuleMenuItem
+                    {
+                        Title = "Master Setup",
+                        Icon = "mdi-view-dashboard-outline",
+                        Href = "/pages/master-setup",
+                        Roles = ["Admin", "Users", "Basic"]
+                    },
+                    // Medical Business Setup
                     new ModuleMenuItem
                     {
                         Title = "Facilities",
                         Icon = "mdi-hospital-building",
                         Href = "/pages/facilities",
-                        Roles = ["Admin", "Users"]
+                        Roles = ["Admin", "Users", "Basic"]
                     },
                     new ModuleMenuItem
                     {
                         Title = "Departments",
                         Icon = "mdi-office-building-outline",
                         Href = "/pages/departments",
-                        Roles = ["Admin", "Users"]
+                        Roles = ["Admin", "Users", "Basic"]
+                    },
+                    new ModuleMenuItem
+                    {
+                        Title = "Shifts",
+                        Icon = "mdi-clock-outline",
+                        Href = "/pages/shifts",
+                        Roles = ["Admin", "Users", "Basic"]
                     },
                     new ModuleMenuItem
                     {
                         Title = "Locations",
                         Icon = "mdi-map-marker",
                         Href = "/pages/locations",
-                        Roles = ["Admin", "Users"]
+                        Roles = ["Admin", "Users", "Basic"]
                     },
                     new ModuleMenuItem
                     {
                         Title = "Specialties",
                         Icon = "mdi-medical-bag",
                         Href = "/pages/specialties",
-                        Roles = ["Admin", "Users"]
+                        Roles = ["Admin", "Users", "Basic"]
                     },
                     new ModuleMenuItem
                     {
                         Title = "Beds",
                         Icon = "mdi-bed",
                         Href = "/pages/beds",
-                        Roles = ["Admin", "Users"]
+                        Roles = ["Admin", "Users", "Basic"]
                     },
                     new ModuleMenuItem
                     {
                         Title = "Bed Board",
                         Icon = "mdi-view-dashboard",
                         Href = "/pages/bedboard",
-                        Roles = ["Admin", "Users"]
-                    }
-                ]
-            },
-            // Master Data - Second section (Geographic and Demographics)
-            new ModuleMenuSection
-            {
-                Title = "Master Data",
-                Roles = ["Admin", "Users"],
-                Items =
-                [
+                        Roles = ["Admin", "Users", "Basic"]
+                    },
+                    // Geographic and Demographics
                     new ModuleMenuItem
                     {
                         Title = "Countries",
                         Icon = "mdi-earth",
                         Href = "/pages/countries",
-                        Roles = ["Admin", "Users"]
+                        Roles = ["Admin", "Users", "Basic"]
                     },
                     new ModuleMenuItem
                     {
                         Title = "Cities",
                         Icon = "mdi-city",
                         Href = "/pages/cities",
-                        Roles = ["Admin", "Users"]
+                        Roles = ["Admin", "Users", "Basic"]
                     },
                     new ModuleMenuItem
                     {
                         Title = "Nationalities",
                         Icon = "mdi-passport",
                         Href = "/pages/nationalities",
-                        Roles = ["Admin", "Users"]
+                        Roles = ["Admin", "Users", "Basic"]
                     },
                     new ModuleMenuItem
                     {
                         Title = "Blood Groups",
                         Icon = "mdi-water",
                         Href = "/pages/bloodgroups",
-                        Roles = ["Admin", "Users"]
+                        Roles = ["Admin", "Users", "Basic"]
                     },
                     new ModuleMenuItem
                     {
                         Title = "Marital Statuses",
                         Icon = "mdi-ring",
                         Href = "/pages/maritalstatuses",
-                        Roles = ["Admin", "Users"]
+                        Roles = ["Admin", "Users", "Basic"]
                     },
                     new ModuleMenuItem
                     {
                         Title = "Contacts",
                         Icon = "mdi-account-multiple",
                         Href = "/pages/contacts",
-                        Roles = ["Admin", "Users"]
+                        Roles = ["Admin", "Users", "Basic"]
                     }
                 ]
             }

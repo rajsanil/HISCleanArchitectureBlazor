@@ -14,7 +14,9 @@ public interface IApplicationDbContext
     DbSet<Document> Documents { get; set; }
     DbSet<PicklistSet> PicklistSets { get; set; }
     DbSet<Product> Products { get; set; }
+    DbSet<Shift> Shifts { get; set; }
     DbSet<Tenant> Tenants { get; set; }
+    DbSet<UserFavorite> UserFavorites { get; set; }
     ChangeTracker ChangeTracker { get; }
 
     DbSet<DataProtectionKey> DataProtectionKeys { get; set; }

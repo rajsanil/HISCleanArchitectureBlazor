@@ -22,6 +22,7 @@
 @using System.Security.Claims
 @using System.Globalization
 @using ZiggyCreatures.Caching.Fusion
+@using CleanArchitecture.Blazor.Application.Common.Security
 
 @attribute [Authorize(Policy = Permissions.Users.View)]
 @inherits OwningComponentBase<ApplicationDbContext>
@@ -32,6 +33,7 @@
 @inject IUserService UserService
 @inject ITenantService TenantsService
 @inject IFusionCache FusionCache
+@inject UserProfileStateService UserProfileStateService
 @inject IExcelService ExcelService
 @inject IMailService MailService
 @inject IStringLocalizer<Users> L
@@ -435,6 +437,7 @@
 
         Snackbar.Add($"{L["New user created successfully."]}", Severity.Info);
         await AssignRolesToUser(applicationUser, model.AssignedRoles);
+        UserProfileStateService.RemoveApplicationUserCache(applicationUser.UserName!);
         Logger.LogInformation("Create a user succeeded. Username: {@UserName:l}, UserId: {@UserId}", applicationUser.UserName, applicationUser.Id);
         UserService.Refresh();
         await OnRefresh();
@@ -467,6 +470,7 @@
                 await UserManager.AddToRolesAsync(user, item.AssignedRoles);
             }
 
+            UserProfileStateService.RemoveApplicationUserCache(user.UserName!);
             Snackbar.Add($"{L["The user updated successfully."]}", Severity.Info);
             await OnRefresh();
             UserService.Refresh();

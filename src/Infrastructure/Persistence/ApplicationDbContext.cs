@@ -33,8 +33,10 @@ public class ApplicationDbContext : IdentityDbContext<
     public DbSet<AuditTrail> AuditTrails { get; set; }
     public DbSet<Document> Documents { get; set; }
     public DbSet<Product> Products { get; set; }
+    public DbSet<Shift> Shifts { get; set; }
     public DbSet<Contact> Contacts { get; set; }
     public DbSet<DataProtectionKey> DataProtectionKeys { get; set; }
+    public DbSet<UserFavorite> UserFavorites { get; set; }
 
     public DbSet<PicklistSet> PicklistSets { get; set; }
     

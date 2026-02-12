@@ -27,6 +27,7 @@ public class MenuService : IMenuService
             SectionItems = new List<MenuSectionItemModel>
             {
                 new() { Title = "Home", Icon = Icons.Material.Filled.Home, Href = "/" },
+                new() { Title = "Favorites", Icon = Icons.Material.Filled.Favorite, Href = "/pages/favorites", PageStatus = PageStatus.Completed },
                 new()
                 {
                     Title = "E-Commerce",
@@ -189,7 +190,7 @@ public class MenuService : IMenuService
         var hospitalSection = new MenuSectionModel
         {
             Title = "Hospital",
-            Roles = new[] { RoleName.Admin, RoleName.Users },
+            Roles = new[] { RoleName.Admin, RoleName.Users, RoleName.Basic },
             SectionItems = new List<MenuSectionItemModel>()
         };
 

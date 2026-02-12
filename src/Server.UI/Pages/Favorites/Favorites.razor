@@ -1,0 +1,278 @@
+@page "/pages/favorites"
+@implements IDisposable
+@using CleanArchitecture.Blazor.Application.Common.Interfaces.Identity
+@using CleanArchitecture.Blazor.Application.Features.UserFavorites.DTOs
+@using CleanArchitecture.Blazor.Application.Features.UserFavorites.Commands
+@using CleanArchitecture.Blazor.Application.Features.UserFavorites.Queries
+@using CleanArchitecture.Blazor.Domain.Entities
+@using CleanArchitecture.Blazor.Application.Common.Security
+@using CleanArchitecture.Blazor.Server.UI.Services.Navigation
+@using CleanArchitecture.Blazor.Server.UI.Models.NavigationMenu
+@inject NavigationManager Navigation
+@inject IStringLocalizer<Favorites> L
+@inject ISender Sender
+@inject ICurrentUserAccessor CurrentUser
+@inject ISnackbar Snackbar
+@inject UserProfileStateService UserProfileState
+@inject IMenuService MenuService
+
+<PageTitle>@Title</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4 mb-8">
+    <!-- Header -->
+    <div class="mb-4">
+        <MudText Typo="Typo.h5" Class="fw-bold">
+            <MudIcon Icon="@Icons.Material.Filled.Favorite" Color="Color.Error" Class="me-2" />
+            @Title
+        </MudText>
+        <MudText Typo="Typo.body2" Class="mud-text-secondary">Your favorited pages and modules for quick access</MudText>
+    </div>
+
+    @if (_loading)
+    {
+        <div class="d-flex justify-center align-center" style="min-height: 400px;">
+            <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+        </div>
+    }
+    else if (!_filteredFavorites.Any())
+    {
+        <MudPaper Class="pa-8 text-center" Elevation="0">
+            <MudIcon Icon="@Icons.Material.Outlined.FavoriteBorder" Size="Size.Large" Color="Color.Default" Class="mb-4" Style="font-size: 4rem;" />
+            <MudText Typo="Typo.h6" Class="mb-2">No favorites yet</MudText>
+            <MudText Typo="Typo.body2" Class="mud-text-secondary mb-4">
+                Start adding your frequently used pages to favorites by clicking the heart icon on any page.
+            </MudText>
+            <MudButton Variant="Variant.Filled" 
+                       Color="Color.Primary" 
+                       StartIcon="@Icons.Material.Filled.Dashboard"
+                       OnClick="@(() => Navigation.NavigateTo("/pages/master-setup"))">
+                Go to Master Setup
+            </MudButton>
+        </MudPaper>
+    }
+    else
+    {
+        <MudGrid Spacing="3">
+            @foreach (var favorite in _filteredFavorites)
+            {
+                <MudItem xs="6" sm="4" md="3" lg="2">
+                    <MudPaper Outlined="true" Class="hover-card pa-3 text-center" Style="height: 100%; position: relative;">
+                        <MudIconButton Icon="@Icons.Material.Filled.Close"
+                                       Color="Color.Default"
+                                       Size="Size.Small"
+                                       Style="position: absolute; top: 4px; right: 4px;"
+                                       OnClick="@(() => RemoveFavorite(favorite))"
+                                       Title="Remove from favorites" />
+                        <div class="cursor-pointer" @onclick="@(() => Navigation.NavigateTo(favorite.ItemKey))">
+                            <MudAvatar Color="@GetAvatarColor(favorite.ItemKey)" Size="Size.Medium" Class="mb-2">
+                                <MudIcon Icon="@favorite.Icon" />
+                            </MudAvatar>
+                            <MudText Typo="Typo.body2" Class="fw-medium">@favorite.Title</MudText>
+                            @if (!string.IsNullOrEmpty(favorite.Description))
+                            {
+                                <MudText Typo="Typo.caption" Class="mud-text-secondary mt-1">@favorite.Description</MudText>
+                            }
+                        </div>
+                    </MudPaper>
+                </MudItem>
+            }
+        </MudGrid>
+
+        <div class="mt-4 text-center">
+            <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                @_filteredFavorites.Count() @(_filteredFavorites.Count() == 1 ? "favorite" : "favorites")
+            </MudText>
+        </div>
+    }
+</MudContainer>
+
+<style>
+    .hover-card {
+        transition: all 0.2s ease;
+    }
+
+    .hover-card:hover {
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        transform: translateY(-2px);
+    }
+
+    .cursor-pointer {
+        cursor: pointer;
+    }
+</style>
+
+@code {
+    private string Title = "My Favorites";
+    private IEnumerable<UserFavoriteDto> _favorites = new List<UserFavoriteDto>();
+    private IEnumerable<UserFavoriteDto> _filteredFavorites = new List<UserFavoriteDto>();
+    private HashSet<string> _accessibleUrls = new();
+    private UserProfile? _userProfile;
+    private bool _loading = true;
+    private readonly SemaphoreSlim _semaphore = new(1, 1);
+    private bool _disposed = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _userProfile = UserProfileState.UserProfile;
+        BuildAccessibleUrlsSet();
+        await LoadFavoritesAsync();
+    }
+
+    private async Task LoadFavoritesAsync()
+    {
+        if (_disposed) return;
+        
+        await _semaphore.WaitAsync();
+        try
+        {
+            if (_disposed) return;
+            
+            var userId = CurrentUser.SessionInfo?.UserId;
+            if (string.IsNullOrEmpty(userId))
+            {
+                _loading = false;
+                return;
+            }
+
+            var query = new GetUserFavoritesQuery { UserId = userId };
+            _favorites = await Sender.Send(query);
+            _filteredFavorites = _favorites.Where(f => IsAccessible(f.ItemKey)).ToList();
+            _loading = false;
+        }
+        finally
+        {
+            if (!_disposed)
+                _semaphore.Release();
+        }
+    }
+
+    private async Task RemoveFavorite(UserFavoriteDto favorite)
+    {
+        if (_disposed) return;
+        
+        await _semaphore.WaitAsync();
+        try
+        {
+            if (_disposed) return;
+            
+            var userId = CurrentUser.SessionInfo?.UserId;
+            if (string.IsNullOrEmpty(userId)) return;
+
+            var removeCommand = new RemoveFavoriteCommand
+            {
+                UserId = userId,
+                ItemKey = favorite.ItemKey
+            };
+
+            var result = await Sender.Send(removeCommand);
+            if (result.Succeeded)
+            {
+                _favorites = _favorites.Where(f => f.Id != favorite.Id).ToList();
+                _filteredFavorites = _filteredFavorites.Where(f => f.Id != favorite.Id).ToList();
+                
+                if (!_disposed)
+                {
+                    Snackbar.Add("Removed from favorites", Severity.Success);
+                    StateHasChanged();
+                }
+            }
+            else
+            {
+                if (!_disposed)
+                    Snackbar.Add(result.ErrorMessage, Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            if (!_disposed)
+                Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            if (!_disposed)
+                _semaphore.Release();
+        }
+    }
+
+    private Color GetAvatarColor(string itemKey)
+    {
+        return itemKey switch
+        {
+            "/pages/facilities" => Color.Primary,
+            "/pages/departments" => Color.Secondary,
+            "/pages/locations" => Color.Info,
+            "/pages/specialties" => Color.Primary,
+            "/pages/beds" => Color.Success,
+            "/pages/bedboard" => Color.Tertiary,
+            "/pages/countries" => Color.Primary,
+            "/pages/cities" => Color.Info,
+            "/pages/nationalities" => Color.Tertiary,
+            "/pages/bloodgroups" => Color.Error,
+            "/pages/maritalstatuses" => Color.Primary,
+            "/pages/contacts" => Color.Secondary,
+            _ => Color.Primary
+        };
+    }
+
+    private void BuildAccessibleUrlsSet()
+    {
+        _accessibleUrls.Clear();
+        var userRoles = _userProfile?.AssignedRoles ?? Array.Empty<string>();
+
+        foreach (var section in MenuService.Features)
+        {
+            // Check if user has access to this section
+            if (section.Roles != null && !section.Roles.Any(r => userRoles.Contains(r)))
+                continue;
+
+            // Add section items
+            if (section.SectionItems != null)
+            {
+                foreach (var item in section.SectionItems)
+                {
+                    // Check if user has access to this menu item
+                    if (item.Roles != null && !item.Roles.Any(r => userRoles.Contains(r)))
+                        continue;
+
+                    if (!string.IsNullOrEmpty(item.Href))
+                    {
+                        _accessibleUrls.Add(item.Href);
+                    }
+
+                    // Add sub-items
+                    if (item.MenuItems != null)
+                    {
+                        foreach (var subItem in item.MenuItems)
+                        {
+                            // Check if user has access to this sub-item
+                            if (subItem.Roles != null && !subItem.Roles.Any(r => userRoles.Contains(r)))
+                                continue;
+
+                            if (!string.IsNullOrEmpty(subItem.Href))
+                            {
+                                _accessibleUrls.Add(subItem.Href);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private bool IsAccessible(string itemKey)
+    {
+        // If user has no roles assigned, show all favorites (backward compatibility)
+        if (_userProfile?.AssignedRoles == null || !_userProfile.AssignedRoles.Any())
+            return true;
+
+        return _accessibleUrls.Contains(itemKey);
+    }
+
+    public void Dispose()
+    {
+        if (_disposed) return;
+        
+        _disposed = true;
+        _semaphore?.Dispose();
+    }
+}

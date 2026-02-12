@@ -1,0 +1,385 @@
+@page "/pages/master-setup"
+@implements IDisposable
+@using CleanArchitecture.Blazor.Application.Common.Interfaces.Identity
+@using CleanArchitecture.Blazor.Application.Features.UserFavorites.DTOs
+@using CleanArchitecture.Blazor.Application.Features.UserFavorites.Commands
+@using CleanArchitecture.Blazor.Application.Features.UserFavorites.Queries
+@using CleanArchitecture.Blazor.Domain.Entities
+@inject NavigationManager Navigation
+@inject IStringLocalizer<MasterSetup> L
+@inject ISender Sender
+@inject ICurrentUserAccessor CurrentUser
+@inject ISnackbar Snackbar
+
+<PageTitle>@Title</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4 mb-8">
+    <!-- Header -->
+    <div class="mb-4">
+        <MudText Typo="Typo.h5" Class="fw-bold">@Title</MudText>
+        <MudText Typo="Typo.body2" Class="mud-text-secondary">Quick access to all master data modules</MudText>
+    </div>
+
+    <!-- Navigation Cards Grid -->
+    <MudGrid Spacing="2">
+        <!-- Medical Business Setup Section -->
+        <MudItem xs="12">
+            <MudText Typo="Typo.subtitle1" Class="mb-2 mud-text-secondary fw-bold">Medical Business Setup</MudText>
+        </MudItem>
+
+        <!-- Facilities -->
+        <MudItem xs="6" sm="4" md="3" lg="2">
+            <MudPaper Outlined="true" Class="hover-card pa-3 text-center" Style="height: 100%; position: relative;">
+                <MudIconButton Icon="@(IsFavorite("/pages/facilities") ? Icons.Material.Filled.Favorite : Icons.Material.Outlined.FavoriteBorder)"
+                               Color="@(IsFavorite("/pages/facilities") ? Color.Error : Color.Default)"
+                               Size="Size.Small"
+                               Style="position: absolute; top: 4px; right: 4px;"
+                               OnClick="@(() => ToggleFavorite("/pages/facilities", "Facilities", Icons.Material.Filled.LocalHospital))" />
+                <div class="cursor-pointer" @onclick="@(() => Navigation.NavigateTo("/pages/facilities"))">
+                    <MudAvatar Color="Color.Primary" Size="Size.Medium" Class="mb-2">
+                        <MudIcon Icon="@Icons.Material.Filled.LocalHospital" />
+                    </MudAvatar>
+                    <MudText Typo="Typo.body2" Class="fw-medium">Facilities</MudText>
+                </div>
+            </MudPaper>
+        </MudItem>
+
+        <!-- Departments -->
+        <MudItem xs="6" sm="4" md="3" lg="2">
+            <MudPaper Outlined="true" Class="hover-card pa-3 text-center" Style="height: 100%; position: relative;">
+                <MudIconButton Icon="@(IsFavorite("/pages/departments") ? Icons.Material.Filled.Favorite : Icons.Material.Outlined.FavoriteBorder)"
+                               Color="@(IsFavorite("/pages/departments") ? Color.Error : Color.Default)"
+                               Size="Size.Small"
+                               Style="position: absolute; top: 4px; right: 4px;"
+                               OnClick="@(() => ToggleFavorite("/pages/departments", "Departments", Icons.Material.Filled.AccountTree))" />
+                <div class="cursor-pointer" @onclick="@(() => Navigation.NavigateTo("/pages/departments"))">
+                    <MudAvatar Color="Color.Secondary" Size="Size.Medium" Class="mb-2">
+                        <MudIcon Icon="@Icons.Material.Filled.AccountTree" />
+                    </MudAvatar>
+                    <MudText Typo="Typo.body2" Class="fw-medium">Departments</MudText>
+                </div>
+            </MudPaper>
+        </MudItem>
+
+        <!-- Shifts -->
+        <MudItem xs="6" sm="4" md="3" lg="2">
+            <MudPaper Outlined="true" Class="hover-card pa-3 text-center" Style="height: 100%; position: relative;">
+                <MudIconButton Icon="@(IsFavorite("/pages/shifts") ? Icons.Material.Filled.Favorite : Icons.Material.Outlined.FavoriteBorder)"
+                               Color="@(IsFavorite("/pages/shifts") ? Color.Error : Color.Default)"
+                               Size="Size.Small"
+                               Style="position: absolute; top: 4px; right: 4px;"
+                               OnClick="@(() => ToggleFavorite("/pages/shifts", "Shifts", Icons.Material.Filled.Schedule))" />
+                <div class="cursor-pointer" @onclick="@(() => Navigation.NavigateTo("/pages/shifts"))">
+                    <MudAvatar Color="Color.Warning" Size="Size.Medium" Class="mb-2">
+                        <MudIcon Icon="@Icons.Material.Filled.Schedule" />
+                    </MudAvatar>
+                    <MudText Typo="Typo.body2" Class="fw-medium">Shifts</MudText>
+                </div>
+            </MudPaper>
+        </MudItem>
+
+        <!-- Locations -->
+        <MudItem xs="6" sm="4" md="3" lg="2">
+            <MudPaper Outlined="true" Class="hover-card pa-3 text-center" Style="height: 100%; position: relative;">
+                <MudIconButton Icon="@(IsFavorite("/pages/locations") ? Icons.Material.Filled.Favorite : Icons.Material.Outlined.FavoriteBorder)"
+                               Color="@(IsFavorite("/pages/locations") ? Color.Error : Color.Default)"
+                               Size="Size.Small"
+                               Style="position: absolute; top: 4px; right: 4px;"
+                               OnClick="@(() => ToggleFavorite("/pages/locations", "Locations", Icons.Material.Filled.LocationOn))" />
+                <div class="cursor-pointer" @onclick="@(() => Navigation.NavigateTo("/pages/locations"))">
+                    <MudAvatar Color="Color.Info" Size="Size.Medium" Class="mb-2">
+                        <MudIcon Icon="@Icons.Material.Filled.LocationOn" />
+                    </MudAvatar>
+                    <MudText Typo="Typo.body2" Class="fw-medium">Locations</MudText>
+                </div>
+            </MudPaper>
+        </MudItem>
+
+        <!-- Specialties -->
+        <MudItem xs="6" sm="4" md="3" lg="2">
+            <MudPaper Outlined="true" Class="hover-card pa-3 text-center" Style="height: 100%; position: relative;">
+                <MudIconButton Icon="@(IsFavorite("/pages/specialties") ? Icons.Material.Filled.Favorite : Icons.Material.Outlined.FavoriteBorder)"
+                               Color="@(IsFavorite("/pages/specialties") ? Color.Error : Color.Default)"
+                               Size="Size.Small"
+                               Style="position: absolute; top: 4px; right: 4px;"
+                               OnClick="@(() => ToggleFavorite("/pages/specialties", "Specialties", Icons.Material.Filled.MedicalServices))" />
+                <div class="cursor-pointer" @onclick="@(() => Navigation.NavigateTo("/pages/specialties"))">
+                    <MudAvatar Color="Color.Primary" Size="Size.Medium" Class="mb-2">
+                        <MudIcon Icon="@Icons.Material.Filled.MedicalServices" />
+                    </MudAvatar>
+                    <MudText Typo="Typo.body2" Class="fw-medium">Specialties</MudText>
+                </div>
+            </MudPaper>
+        </MudItem>
+
+        <!-- Beds -->
+        <MudItem xs="6" sm="4" md="3" lg="2">
+            <MudPaper Outlined="true" Class="hover-card pa-3 text-center" Style="height: 100%; position: relative;">
+                <MudIconButton Icon="@(IsFavorite("/pages/beds") ? Icons.Material.Filled.Favorite : Icons.Material.Outlined.FavoriteBorder)"
+                               Color="@(IsFavorite("/pages/beds") ? Color.Error : Color.Default)"
+                               Size="Size.Small"
+                               Style="position: absolute; top: 4px; right: 4px;"
+                               OnClick="@(() => ToggleFavorite("/pages/beds", "Beds", Icons.Material.Filled.Bed))" />
+                <div class="cursor-pointer" @onclick="@(() => Navigation.NavigateTo("/pages/beds"))">
+                    <MudAvatar Color="Color.Success" Size="Size.Medium" Class="mb-2">
+                        <MudIcon Icon="@Icons.Material.Filled.Bed" />
+                    </MudAvatar>
+                    <MudText Typo="Typo.body2" Class="fw-medium">Beds</MudText>
+                </div>
+            </MudPaper>
+        </MudItem>
+
+        <!-- Bed Board -->
+        <MudItem xs="6" sm="4" md="3" lg="2">
+            <MudPaper Outlined="true" Class="hover-card pa-3 text-center" Style="height: 100%; position: relative;">
+                <MudIconButton Icon="@(IsFavorite("/pages/bedboard") ? Icons.Material.Filled.Favorite : Icons.Material.Outlined.FavoriteBorder)"
+                               Color="@(IsFavorite("/pages/bedboard") ? Color.Error : Color.Default)"
+                               Size="Size.Small"
+                               Style="position: absolute; top: 4px; right: 4px;"
+                               OnClick="@(() => ToggleFavorite("/pages/bedboard", "Bed Board", Icons.Material.Filled.Dashboard))" />
+                <div class="cursor-pointer" @onclick="@(() => Navigation.NavigateTo("/pages/bedboard"))">
+                    <MudAvatar Color="Color.Tertiary" Size="Size.Medium" Class="mb-2">
+                        <MudIcon Icon="@Icons.Material.Filled.Dashboard" />
+                    </MudAvatar>
+                    <MudText Typo="Typo.body2" Class="fw-medium">Bed Board</MudText>
+                </div>
+            </MudPaper>
+        </MudItem>
+
+        <!-- Geographic & Demographics Section -->
+        <MudItem xs="12" Class="mt-3">
+            <MudText Typo="Typo.subtitle1" Class="mb-2 mud-text-secondary fw-bold">Geographic & Demographics</MudText>
+        </MudItem>
+
+        <!-- Countries -->
+        <MudItem xs="6" sm="4" md="3" lg="2">
+            <MudPaper Outlined="true" Class="hover-card pa-3 text-center" Style="height: 100%; position: relative;">
+                <MudIconButton Icon="@(IsFavorite("/pages/countries") ? Icons.Material.Filled.Favorite : Icons.Material.Outlined.FavoriteBorder)"
+                               Color="@(IsFavorite("/pages/countries") ? Color.Error : Color.Default)"
+                               Size="Size.Small"
+                               Style="position: absolute; top: 4px; right: 4px;"
+                               OnClick="@(() => ToggleFavorite("/pages/countries", "Countries", Icons.Material.Filled.Public))" />
+                <div class="cursor-pointer" @onclick="@(() => Navigation.NavigateTo("/pages/countries"))">
+                    <MudAvatar Color="Color.Primary" Size="Size.Medium" Class="mb-2">
+                        <MudIcon Icon="@Icons.Material.Filled.Public" />
+                    </MudAvatar>
+                    <MudText Typo="Typo.body2" Class="fw-medium">Countries</MudText>
+                </div>
+            </MudPaper>
+        </MudItem>
+
+        <!-- Cities -->
+        <MudItem xs="6" sm="4" md="3" lg="2">
+            <MudPaper Outlined="true" Class="hover-card pa-3 text-center" Style="height: 100%; position: relative;">
+                <MudIconButton Icon="@(IsFavorite("/pages/cities") ? Icons.Material.Filled.Favorite : Icons.Material.Outlined.FavoriteBorder)"
+                               Color="@(IsFavorite("/pages/cities") ? Color.Error : Color.Default)"
+                               Size="Size.Small"
+                               Style="position: absolute; top: 4px; right: 4px;"
+                               OnClick="@(() => ToggleFavorite("/pages/cities", "Cities", Icons.Material.Filled.LocationCity))" />
+                <div class="cursor-pointer" @onclick="@(() => Navigation.NavigateTo("/pages/cities"))">
+                    <MudAvatar Color="Color.Info" Size="Size.Medium" Class="mb-2">
+                        <MudIcon Icon="@Icons.Material.Filled.LocationCity" />
+                    </MudAvatar>
+                    <MudText Typo="Typo.body2" Class="fw-medium">Cities</MudText>
+                </div>
+            </MudPaper>
+        </MudItem>
+
+        <!-- Nationalities -->
+        <MudItem xs="6" sm="4" md="3" lg="2">
+            <MudPaper Outlined="true" Class="hover-card pa-3 text-center" Style="height: 100%; position: relative;">
+                <MudIconButton Icon="@(IsFavorite("/pages/nationalities") ? Icons.Material.Filled.Favorite : Icons.Material.Outlined.FavoriteBorder)"
+                               Color="@(IsFavorite("/pages/nationalities") ? Color.Error : Color.Default)"
+                               Size="Size.Small"
+                               Style="position: absolute; top: 4px; right: 4px;"
+                               OnClick="@(() => ToggleFavorite("/pages/nationalities", "Nationalities", Icons.Material.Filled.Flag))" />
+                <div class="cursor-pointer" @onclick="@(() => Navigation.NavigateTo("/pages/nationalities"))">
+                    <MudAvatar Color="Color.Tertiary" Size="Size.Medium" Class="mb-2">
+                        <MudIcon Icon="@Icons.Material.Filled.Flag" />
+                    </MudAvatar>
+                    <MudText Typo="Typo.body2" Class="fw-medium">Nationalities</MudText>
+                </div>
+            </MudPaper>
+        </MudItem>
+
+        <!-- Blood Groups -->
+        <MudItem xs="6" sm="4" md="3" lg="2">
+            <MudPaper Outlined="true" Class="hover-card pa-3 text-center" Style="height: 100%; position: relative;">
+                <MudIconButton Icon="@(IsFavorite("/pages/bloodgroups") ? Icons.Material.Filled.Favorite : Icons.Material.Outlined.FavoriteBorder)"
+                               Color="@(IsFavorite("/pages/bloodgroups") ? Color.Error : Color.Default)"
+                               Size="Size.Small"
+                               Style="position: absolute; top: 4px; right: 4px;"
+                               OnClick="@(() => ToggleFavorite("/pages/bloodgroups", "Blood Groups", Icons.Material.Filled.Bloodtype))" />
+                <div class="cursor-pointer" @onclick="@(() => Navigation.NavigateTo("/pages/bloodgroups"))">
+                    <MudAvatar Color="Color.Error" Size="Size.Medium" Class="mb-2">
+                        <MudIcon Icon="@Icons.Material.Filled.Bloodtype" />
+                    </MudAvatar>
+                    <MudText Typo="Typo.body2" Class="fw-medium">Blood Groups</MudText>
+                </div>
+            </MudPaper>
+        </MudItem>
+
+        <!-- Marital Statuses -->
+        <MudItem xs="6" sm="4" md="3" lg="2">
+            <MudPaper Outlined="true" Class="hover-card pa-3 text-center" Style="height: 100%; position: relative;">
+                <MudIconButton Icon="@(IsFavorite("/pages/maritalstatuses") ? Icons.Material.Filled.Favorite : Icons.Material.Outlined.FavoriteBorder)"
+                               Color="@(IsFavorite("/pages/maritalstatuses") ? Color.Error : Color.Default)"
+                               Size="Size.Small"
+                               Style="position: absolute; top: 4px; right: 4px;"
+                               OnClick="@(() => ToggleFavorite("/pages/maritalstatuses", "Marital Statuses", Icons.Material.Filled.People))" />
+                <div class="cursor-pointer" @onclick="@(() => Navigation.NavigateTo("/pages/maritalstatuses"))">
+                    <MudAvatar Color="Color.Primary" Size="Size.Medium" Class="mb-2">
+                        <MudIcon Icon="@Icons.Material.Filled.People" />
+                    </MudAvatar>
+                    <MudText Typo="Typo.body2" Class="fw-medium">Marital Statuses</MudText>
+                </div>
+            </MudPaper>
+        </MudItem>
+
+        <!-- Contacts -->
+        <MudItem xs="6" sm="4" md="3" lg="2">
+            <MudPaper Outlined="true" Class="hover-card pa-3 text-center" Style="height: 100%; position: relative;">
+                <MudIconButton Icon="@(IsFavorite("/pages/contacts") ? Icons.Material.Filled.Favorite : Icons.Material.Outlined.FavoriteBorder)"
+                               Color="@(IsFavorite("/pages/contacts") ? Color.Error : Color.Default)"
+                               Size="Size.Small"
+                               Style="position: absolute; top: 4px; right: 4px;"
+                               OnClick="@(() => ToggleFavorite("/pages/contacts", "Contacts", Icons.Material.Filled.Window))" />
+                <div class="cursor-pointer" @onclick="@(() => Navigation.NavigateTo("/pages/contacts"))">
+                    <MudAvatar Color="Color.Secondary" Size="Size.Medium" Class="mb-2">
+                        <MudIcon Icon="@Icons.Material.Filled.Window" />
+                    </MudAvatar>
+                    <MudText Typo="Typo.body2" Class="fw-medium">Contacts</MudText>
+                </div>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+</MudContainer>
+
+<style>
+    .hover-card {
+        transition: all 0.2s ease;
+    }
+
+    .hover-card:hover {
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        transform: translateY(-2px);
+    }
+
+    .cursor-pointer {
+        cursor: pointer;
+    }
+</style>
+
+@code {
+    private string Title = "Master Data Setup";
+    private HashSet<string> _favoriteKeys = new();
+    private bool _loading = true;
+    private readonly SemaphoreSlim _semaphore = new(1, 1);
+    private bool _disposed = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadFavoritesAsync();
+    }
+
+    private async Task LoadFavoritesAsync()
+    {
+        if (_disposed) return;
+        
+        await _semaphore.WaitAsync();
+        try
+        {
+            if (_disposed) return;
+            
+            var userId = CurrentUser.SessionInfo?.UserId;
+            if (string.IsNullOrEmpty(userId)) return;
+
+            var query = new GetUserFavoritesQuery { UserId = userId };
+            var favorites = await Sender.Send(query);
+            _favoriteKeys = favorites.Select(f => f.ItemKey).ToHashSet();
+            _loading = false;
+        }
+        finally
+        {
+            if (!_disposed)
+                _semaphore.Release();
+        }
+    }
+
+    private bool IsFavorite(string itemKey) => _favoriteKeys.Contains(itemKey);
+
+    private async Task ToggleFavorite(string itemKey, string title, string icon)
+    {
+        if (_loading || _disposed) return;
+        
+        await _semaphore.WaitAsync();
+        try
+        {
+            if (_disposed) return;
+            
+            var userId = CurrentUser.SessionInfo?.UserId;
+            if (string.IsNullOrEmpty(userId)) return;
+
+            if (IsFavorite(itemKey))
+            {
+                var removeCommand = new RemoveFavoriteCommand
+                {
+                    UserId = userId,
+                    ItemKey = itemKey
+                };
+                var result = await Sender.Send(removeCommand);
+                if (result.Succeeded)
+                {
+                    _favoriteKeys.Remove(itemKey);
+                    Snackbar.Add("Removed from favorites", Severity.Success);
+                }
+                else
+                {
+                    Snackbar.Add(result.ErrorMessage, Severity.Error);
+                }
+            }
+            else
+            {
+                var addCommand = new AddFavoriteCommand
+                {
+                    UserId = userId,
+                    Type = FavoriteType.MenuItem,
+                    ItemKey = itemKey,
+                    Title = title,
+                    Icon = icon
+                };
+                var result = await Sender.Send(addCommand);
+                if (result.Succeeded)
+                {
+                    _favoriteKeys.Add(itemKey);
+                    Snackbar.Add("Added to favorites", Severity.Success);
+                }
+                else
+                {
+                    Snackbar.Add(result.ErrorMessage, Severity.Error);
+                }
+            }
+            
+            if (!_disposed)
+                StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            if (!_disposed)
+                Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            if (!_disposed)
+                _semaphore.Release();
+        }
+    }
+
+    public void Dispose()
+    {
+        if (_disposed) return;
+        
+        _disposed = true;
+        _semaphore?.Dispose();
+    }
+}

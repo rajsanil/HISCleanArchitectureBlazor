@@ -269,4 +269,30 @@ public static partial class MasterDataPermissions
         [Description("Allows importing specialty data.")]
         public const string Import = "Permissions.Specialties.Import";
     }
+
+    [DisplayName("Shift Permissions")]
+    [Description("Set permissions for shift management operations.")]
+    public static class Shifts
+    {
+        [Description("Allows viewing shift details.")]
+        public const string View = "Permissions.Shifts.View";
+
+        [Description("Allows creating shift records.")]
+        public const string Create = "Permissions.Shifts.Create";
+
+        [Description("Allows editing shift details.")]
+        public const string Edit = "Permissions.Shifts.Edit";
+
+        [Description("Allows deleting shift records.")]
+        public const string Delete = "Permissions.Shifts.Delete";
+
+        [Description("Allows searching shift records.")]
+        public const string Search = "Permissions.Shifts.Search";
+
+        [Description("Allows exporting shift data.")]
+        public const string Export = "Permissions.Shifts.Export";
+
+        [Description("Allows importing shift data.")]
+        public const string Import = "Permissions.Shifts.Import";
+    }
 }
