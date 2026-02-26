@@ -1,6 +1,6 @@
 using HIS.MasterData.Application.Features.Countries.Caching;
 using HIS.MasterData.Application.Features.Countries.Mappers;
-using HIS.MasterData.Application.Common.Exceptions;
+using CleanArchitecture.Blazor.Application.Common.ExceptionHandlers;
 
 namespace HIS.MasterData.Application.Features.Countries.Commands.AddEdit;
 

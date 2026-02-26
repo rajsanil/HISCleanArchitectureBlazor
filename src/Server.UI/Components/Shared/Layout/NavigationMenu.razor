@@ -22,7 +22,7 @@
     </MudDrawerHeader>
 
     <MudNavMenu Class="px-3">
-        @foreach (var section in MenuSections.Where(x => x.Roles == null || x.Roles.Any(x => Roles.Contains(x))))
+        @foreach (var section in MenuSections.Where(x => IsVisible(x.Permission, x.Roles)))
         {
             @if (section is not null)
             {
@@ -35,12 +35,12 @@
 
                 @if (section.SectionItems is not null)
                 {
-                    @foreach (var sectionItem in section.SectionItems.Where(x => x.Roles == null || x.Roles.Any(x => Roles.Contains(x))))
+                    @foreach (var sectionItem in section.SectionItems.Where(x => IsVisible(x.Permission, x.Roles)))
                     {
                         @if (sectionItem is { IsParent: true, MenuItems: not null })
                         {
                             <MudNavGroup Icon="@sectionItem.Icon" Title="@L[sectionItem.Title]" Expanded="Expanded(sectionItem)" Class="nav-group-medex">
-                                @foreach (var menuItem in sectionItem.MenuItems.Where(x => x.Roles == null || x.Roles.Any(x => Roles.Contains(x))))
+                                @foreach (var menuItem in sectionItem.MenuItems.Where(x => IsVisible(x.Permission, x.Roles)))
                                 {
                                     <MudNavLink Disabled="@(menuItem.PageStatus != PageStatus.Completed)" Href="@(menuItem.Href)" Target="@(menuItem.Target)" Match="NavLinkMatch.Prefix">
                                         <div class="d-flex">
@@ -124,6 +124,17 @@
 
     private IEnumerable<MenuSectionModel> MenuSections => MenuService.Features;
     [EditorRequired] [Parameter] public string[] Roles { get; set; } = Array.Empty<string>();
+    [EditorRequired] [Parameter] public HashSet<string> Permissions { get; set; } = new();
+
+    /// <summary>
+    /// Determines menu item visibility. Permission-based check takes precedence over role-based check.
+    /// </summary>
+    private bool IsVisible(string? permission, string[]? roles)
+    {
+        if (!string.IsNullOrEmpty(permission))
+            return Permissions.Contains(permission);
+        return roles == null || roles.Any(r => Roles.Contains(r));
+    }
 
     private bool Expanded(MenuSectionItemModel menu)
     {

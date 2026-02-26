@@ -1,6 +1,6 @@
 using HIS.MasterData.Application.Features.BloodGroups.Caching;
 using HIS.MasterData.Application.Features.BloodGroups.Mappers;
-using HIS.MasterData.Application.Common.Exceptions;
+using CleanArchitecture.Blazor.Application.Common.ExceptionHandlers;
 
 namespace HIS.MasterData.Application.Features.BloodGroups.Commands.AddEdit;
 

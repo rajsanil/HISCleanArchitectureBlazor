@@ -1,6 +1,7 @@
 using System.Reflection;
 using FluentValidation;
 using HIS.Core.Abstractions;
+using HIS.MasterData.Infrastructure.Permissions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -82,49 +83,49 @@ public class MasterDataModule : IHisModule
                         Title = "Facilities",
                         Icon = "mdi-hospital-building",
                         Href = "/pages/facilities",
-                        Roles = ["Admin", "Users", "Basic"]
+                        Permission = "Permissions.Facilities.View"
                     },
                     new ModuleMenuItem
                     {
                         Title = "Departments",
                         Icon = "mdi-office-building-outline",
                         Href = "/pages/departments",
-                        Roles = ["Admin", "Users", "Basic"]
+                        Permission = MasterDataPermissions.Departments.View
                     },
                     new ModuleMenuItem
                     {
                         Title = "Shifts",
                         Icon = "mdi-clock-outline",
                         Href = "/pages/shifts",
-                        Roles = ["Admin", "Users", "Basic"]
+                        Permission = MasterDataPermissions.Shifts.View
                     },
                     new ModuleMenuItem
                     {
                         Title = "Locations",
                         Icon = "mdi-map-marker",
                         Href = "/pages/locations",
-                        Roles = ["Admin", "Users", "Basic"]
+                        Permission = MasterDataPermissions.Locations.View
                     },
                     new ModuleMenuItem
                     {
                         Title = "Specialties",
                         Icon = "mdi-medical-bag",
                         Href = "/pages/specialties",
-                        Roles = ["Admin", "Users", "Basic"]
+                        Permission = MasterDataPermissions.Specialties.View
                     },
                     new ModuleMenuItem
                     {
                         Title = "Beds",
                         Icon = "mdi-bed",
                         Href = "/pages/beds",
-                        Roles = ["Admin", "Users", "Basic"]
+                        Permission = MasterDataPermissions.Beds.View
                     },
                     new ModuleMenuItem
                     {
                         Title = "Bed Board",
                         Icon = "mdi-view-dashboard",
                         Href = "/pages/bedboard",
-                        Roles = ["Admin", "Users", "Basic"]
+                        Permission = MasterDataPermissions.Beds.View
                     },
                     // Geographic and Demographics
                     new ModuleMenuItem
@@ -132,42 +133,42 @@ public class MasterDataModule : IHisModule
                         Title = "Countries",
                         Icon = "mdi-earth",
                         Href = "/pages/countries",
-                        Roles = ["Admin", "Users", "Basic"]
+                        Permission = MasterDataPermissions.Countries.View
                     },
                     new ModuleMenuItem
                     {
                         Title = "Cities",
                         Icon = "mdi-city",
                         Href = "/pages/cities",
-                        Roles = ["Admin", "Users", "Basic"]
+                        Permission = MasterDataPermissions.Cities.View
                     },
                     new ModuleMenuItem
                     {
                         Title = "Nationalities",
                         Icon = "mdi-passport",
                         Href = "/pages/nationalities",
-                        Roles = ["Admin", "Users", "Basic"]
+                        Permission = MasterDataPermissions.Nationalities.View
                     },
                     new ModuleMenuItem
                     {
                         Title = "Blood Groups",
                         Icon = "mdi-water",
                         Href = "/pages/bloodgroups",
-                        Roles = ["Admin", "Users", "Basic"]
+                        Permission = MasterDataPermissions.BloodGroups.View
                     },
                     new ModuleMenuItem
                     {
                         Title = "Marital Statuses",
                         Icon = "mdi-ring",
                         Href = "/pages/maritalstatuses",
-                        Roles = ["Admin", "Users", "Basic"]
+                        Permission = MasterDataPermissions.MaritalStatuses.View
                     },
                     new ModuleMenuItem
                     {
                         Title = "Contacts",
                         Icon = "mdi-account-multiple",
                         Href = "/pages/contacts",
-                        Roles = ["Admin", "Users", "Basic"]
+                        Permission = MasterDataPermissions.Contacts.View
                     }
                 ]
             }

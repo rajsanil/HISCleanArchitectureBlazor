@@ -1,6 +1,6 @@
 using HIS.MasterData.Application.Features.Cities.Caching;
 using HIS.MasterData.Application.Features.Cities.Mappers;
-using HIS.MasterData.Application.Common.Exceptions;
+using CleanArchitecture.Blazor.Application.Common.ExceptionHandlers;
 
 namespace HIS.MasterData.Application.Features.Cities.Commands.AddEdit;
 

@@ -210,6 +210,7 @@ public class MenuService : IMenuService
                     Icon = GetIconForSection(moduleSection.Title),
                     IsParent = true,
                     Roles = moduleSection.Roles,
+                    Permission = moduleSection.Permission,
                     PageStatus = PageStatus.Completed,
                     MenuItems = new List<MenuSectionSubItemModel>()
                 };
@@ -223,6 +224,7 @@ public class MenuService : IMenuService
                         Title = item.Title,
                         Href = item.Href,
                         Roles = item.Roles,
+                        Permission = item.Permission,
                         PageStatus = item.PageStatus.HasValue 
                             ? (PageStatus)(int)item.PageStatus.Value 
                             : PageStatus.Completed

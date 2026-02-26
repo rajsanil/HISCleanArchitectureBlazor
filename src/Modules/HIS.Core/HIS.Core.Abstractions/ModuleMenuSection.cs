@@ -7,6 +7,11 @@ public class ModuleMenuSection
 {
     public string Title { get; set; } = string.Empty;
     public string[]? Roles { get; set; }
+    /// <summary>
+    /// Permission required to see this section (e.g. "Permissions.Countries.View").
+    /// When set, takes precedence over Roles for visibility checks.
+    /// </summary>
+    public string? Permission { get; set; }
     public List<ModuleMenuItem> Items { get; set; } = [];
 }
 
@@ -19,6 +24,11 @@ public class ModuleMenuItem
     public string Icon { get; set; } = string.Empty;
     public string? Href { get; set; }
     public string[]? Roles { get; set; }
+    /// <summary>
+    /// Permission required to see this item (e.g. "Permissions.Shifts.View").
+    /// When set, takes precedence over Roles for visibility checks.
+    /// </summary>
+    public string? Permission { get; set; }
     public PageStatus? PageStatus { get; set; }
     public List<ModuleMenuSubItem>? SubItems { get; set; }
 }
@@ -31,6 +41,11 @@ public class ModuleMenuSubItem
     public string Title { get; set; } = string.Empty;
     public string Href { get; set; } = string.Empty;
     public string[]? Roles { get; set; }
+    /// <summary>
+    /// Permission required to see this sub-item.
+    /// When set, takes precedence over Roles for visibility checks.
+    /// </summary>
+    public string? Permission { get; set; }
     public PageStatus? PageStatus { get; set; }
 }
 

@@ -42,10 +42,14 @@ public class ShiftConfiguration : IEntityTypeConfiguration<Shift>
             .IsRequired()
             .HasMaxLength(450);
 
-        // Indexes
-        builder.HasIndex(x => new { x.Code, x.TenantId })
+        // Indexes with soft delete filter
+        builder.HasIndex(x => x.Code)
             .IsUnique()
-            .HasDatabaseName("IX_Shifts_Code_TenantId");
+            .HasFilter("[Deleted] IS NULL");
+
+        builder.HasIndex(x => x.Name)
+            .IsUnique()
+            .HasFilter("[Deleted] IS NULL");
 
         builder.HasIndex(x => x.TenantId)
             .HasDatabaseName("IX_Shifts_TenantId");

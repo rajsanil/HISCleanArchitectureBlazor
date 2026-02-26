@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Data.SqlClient;
 
-namespace HIS.MasterData.Application.Common.Exceptions;
+namespace CleanArchitecture.Blazor.Application.Common.ExceptionHandlers;
 
 /// <summary>
 /// Helper class for handling database unique constraint violations

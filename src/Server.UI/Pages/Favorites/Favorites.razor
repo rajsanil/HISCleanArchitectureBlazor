@@ -106,14 +106,25 @@
     private IEnumerable<UserFavoriteDto> _favorites = new List<UserFavoriteDto>();
     private IEnumerable<UserFavoriteDto> _filteredFavorites = new List<UserFavoriteDto>();
     private HashSet<string> _accessibleUrls = new();
+    private HashSet<string> _userPermissions = new();
     private UserProfile? _userProfile;
     private bool _loading = true;
     private readonly SemaphoreSlim _semaphore = new(1, 1);
     private bool _disposed = false;
 
+    [CascadingParameter] private Task<AuthenticationState> AuthState { get; set; } = default!;
+
     protected override async Task OnInitializedAsync()
     {
         _userProfile = UserProfileState.UserProfile;
+
+        // Extract user permissions from claims
+        var state = await AuthState;
+        _userPermissions = state.User.Claims
+            .Where(c => c.Type == "Permission")
+            .Select(c => c.Value)
+            .ToHashSet();
+
         BuildAccessibleUrlsSet();
         await LoadFavoritesAsync();
     }
@@ -221,8 +232,8 @@
 
         foreach (var section in MenuService.Features)
         {
-            // Check if user has access to this section
-            if (section.Roles != null && !section.Roles.Any(r => userRoles.Contains(r)))
+            // Check if user has access to this section (permission-first, then roles)
+            if (!IsMenuVisible(section.Permission, section.Roles, userRoles))
                 continue;
 
             // Add section items
@@ -231,7 +242,7 @@
                 foreach (var item in section.SectionItems)
                 {
                     // Check if user has access to this menu item
-                    if (item.Roles != null && !item.Roles.Any(r => userRoles.Contains(r)))
+                    if (!IsMenuVisible(item.Permission, item.Roles, userRoles))
                         continue;
 
                     if (!string.IsNullOrEmpty(item.Href))
@@ -245,7 +256,7 @@
                         foreach (var subItem in item.MenuItems)
                         {
                             // Check if user has access to this sub-item
-                            if (subItem.Roles != null && !subItem.Roles.Any(r => userRoles.Contains(r)))
+                            if (!IsMenuVisible(subItem.Permission, subItem.Roles, userRoles))
                                 continue;
 
                             if (!string.IsNullOrEmpty(subItem.Href))
@@ -257,6 +268,16 @@
                 }
             }
         }
+    }
+
+    /// <summary>
+    /// Permission-based check takes precedence over role-based check.
+    /// </summary>
+    private bool IsMenuVisible(string? permission, string[]? roles, string[] userRoles)
+    {
+        if (!string.IsNullOrEmpty(permission))
+            return _userPermissions.Contains(permission);
+        return roles == null || roles.Any(r => userRoles.Contains(r));
     }
 
     private bool IsAccessible(string itemKey)

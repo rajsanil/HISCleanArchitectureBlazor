@@ -1,6 +1,6 @@
 using HIS.MasterData.Application.Features.Locations.Caching;
 using HIS.MasterData.Application.Features.Locations.Mappers;
-using HIS.MasterData.Application.Common.Exceptions;
+using CleanArchitecture.Blazor.Application.Common.ExceptionHandlers;
 
 namespace HIS.MasterData.Application.Features.Locations.Commands.AddEdit;
 

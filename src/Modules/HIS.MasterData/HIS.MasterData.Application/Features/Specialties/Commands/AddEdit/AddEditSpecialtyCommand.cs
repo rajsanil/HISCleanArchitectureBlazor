@@ -1,6 +1,6 @@
 using HIS.MasterData.Application.Features.Specialties.Caching;
 using HIS.MasterData.Application.Features.Specialties.Mappers;
-using HIS.MasterData.Application.Common.Exceptions;
+using CleanArchitecture.Blazor.Application.Common.ExceptionHandlers;
 
 namespace HIS.MasterData.Application.Features.Specialties.Commands.AddEdit;
 

@@ -8,7 +8,7 @@ namespace CleanArchitecture.Blazor.Domain.Entities;
 /// <summary>
 /// Represents a work shift in the system.
 /// </summary>
-public class Shift : BaseAuditableEntity, IMayHaveTenant
+public class Shift : BaseAuditableSoftDeleteEntity
 {
     /// <summary>
     /// Unique code for the shift.
